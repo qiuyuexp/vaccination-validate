@@ -124,11 +124,13 @@
 
         /* 在移动端隐藏日历图标 */
         @media (max-width: 480px) {
-            .calendar-icon {
-                display: none;
-            }
             input.date-input {
-                padding-right: 12px;
+                pointer-events: none;
+                background-color: #fff;
+            }
+            
+            .input-container {
+                cursor: pointer;
             }
         }
 
@@ -341,7 +343,7 @@
             return null;
         }
 
-        // 在移动端点击输入框或桌面端点击图标时显示日期选择器
+        // 显示日期选择器
         function showDatePicker(e) {
             e.preventDefault();
             e.stopPropagation();
@@ -376,37 +378,44 @@
             });
         }
 
-        // 移动端点击输入框时显示选择器
         if (isMobile) {
-            input.addEventListener('click', showDatePicker);
+            // 在移动端，点击整个输入框容器时显示日期选择器
+            const inputContainer = input.parentElement;
+            inputContainer.addEventListener('click', showDatePicker);
+            
+            // 禁用输入框的默认行为
+            input.addEventListener('focus', function(e) {
+                e.preventDefault();
+                input.blur();
+            });
         } else {
             // 桌面端只有点击图标时才显示选择器
             calendarIcon.addEventListener('click', showDatePicker);
-        }
-
-        // 处理手动输入
-        input.addEventListener('input', function(e) {
-            const value = e.target.value;
-            if (value) {
-                const formattedDate = validateDate(value);
-                if (formattedDate) {
-                    input.value = formattedDate;
-                    hideError();
+            
+            // 处理手动输入
+            input.addEventListener('input', function(e) {
+                const value = e.target.value;
+                if (value) {
+                    const formattedDate = validateDate(value);
+                    if (formattedDate) {
+                        input.value = formattedDate;
+                        hideError();
+                    } else {
+                        showError();
+                    }
                 } else {
+                    hideError();
+                }
+            });
+
+            // 失去焦点时检查
+            input.addEventListener('blur', function(e) {
+                const value = e.target.value;
+                if (value && !validateDate(value)) {
                     showError();
                 }
-            } else {
-                hideError();
-            }
-        });
-
-        // 失去焦点时检查
-        input.addEventListener('blur', function(e) {
-            const value = e.target.value;
-            if (value && !validateDate(value)) {
-                showError();
-            }
-        });
+            });
+        }
     }
 
     // 初始化所有日期输入框
