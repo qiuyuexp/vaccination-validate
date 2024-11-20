@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>疫苗接种判断表单</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            max-width: 600px;
+            margin: auto;
+        }
+        input, select {
+            display: block;
+            margin-bottom: 10px;
+            padding: 10px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        button {
+            padding: 10px 15px;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            background-color: #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+
+<h1>疫苗接种判断表单</h1>
+<form id="vaccineForm">
+    <label for="birthDate">出生日期：</label>
+    <input type="date" id="birthDate" required>
+
+    <h2>百白破疫苗接种时间</h2>
+    <label for="dTP1">第一次接种时间：</label>
+    <input type="date" id="dTP1" >
+    
+    <label for="dTP2">第二次接种时间：</label>
+    <input type="date" id="dTP2" >
+    
+    <label for="dTP3">第三次接种时间：</label>
+    <input type="date" id="dTP3" >
+    
+    <label for="dTP4">第四次接种时间：</label>
+    <input type="date" id="dTP4">
+
+    <label for="dTP5">第五次接种时间：</label>
+    <input type="date" id="dTP5">
+
+<!--
+    <h2>白破疫苗接种时间</h2>
+    <label for="dT">白破疫苗接种时间：</label>
+    <input type="date" id="dT" >
+    -->
+
+    <h2>麻腮风疫苗接种情况</h2>
+    <label for="mMR1">麻腮风第一次接种时间：</label>
+    <input type="date" id="mMR1" >
+    
+    <label for="mMR2">麻腮风第二次接种时间：</label>
+    <input type="date" id="mMR2">
+    
+    <h2>麻风疫苗接种情况</h2>
+    <label for="measles">麻风接种时间：</label>
+    <input type="date" id="measles">
+
+    <h2>麻腮疫苗接种情况</h2>
+    <label for="mumps">麻腮接种时间：</label>
+    <input type="date" id="mumps">
+    
+
+    <h2>麻疹疫苗接种情况</h2>
+    <label for="mea1">麻疹第一针接种时间：</label>
+    <input type="date" id="mea1">
+    <label for="mea2">麻疹第二针接种时间：</label>
+    <input type="date" id="mea2">
+    <br></br>
+
+    <button type="submit">提交</button><br></br>
+</form>
+
+<div class="result" id="result"></div>
+
+<script>
+
+    function getNextYearSameDate(date) {
+        const nextYearDate = new Date(date); // 创建日期的副本
+        nextYearDate.setFullYear(date.getFullYear() + 1); // 设置为下一年
+        return nextYearDate;
+    }
+    
+
+    function isOverNMonths(date1, date2,numOfMonths) {
+        // 确保输入的是 Date 对象
+        const d1 = new Date(date1);
+        const d2 = new Date(date2);
+        
+        // 计算年份差
+        const yearDiff = d2.getFullYear() - d1.getFullYear();
+        
+        // 计算月份差
+        let monthDiff = d2.getMonth() - d1.getMonth();
+        
+        // 总月份差
+        const totalMonthDiff = yearDiff * 12 + monthDiff;
+        console.log(date1, date2, numOfMonths, totalMonthDiff);
+        
+        // 如果日期小于起始日期，需要减1个月
+        if (d2.getDate() < d1.getDate()) {
+            return totalMonthDiff - 1 >= numOfMonths;
+        }
+        
+        return totalMonthDiff >= numOfMonths;
+    }
+
+    document.getElementById('vaccineForm').addEventListener('submit', function(event) {
+        event.preventDefault(); // 阻止表单提交
+
+        const birthDate = new Date(document.getElementById('birthDate').value);
+        const dTP1 = document.getElementById('dTP1').value ? new Date(document.getElementById('dTP1').value) : null;
+        const dTP2 = document.getElementById('dTP2').value ? new Date(document.getElementById('dTP2').value) : null;
+        const dTP3 = document.getElementById('dTP3').value ? new Date(document.getElementById('dTP3').value) : null;
+        const dTP4 = document.getElementById('dTP4').value ? new Date(document.getElementById('dTP4').value) : null;
+        const dTP5 = document.getElementById('dTP5').value ? new Date(document.getElementById('dTP5').value) : null;
+    //    const dT = document.getElementById('dT').value ? new Date(document.getElementById('dT').value) : null;
+
+        const mMR1 = document.getElementById('mMR1').value ? new Date(document.getElementById('mMR1').value) : null;
+        const mMR2 = document.getElementById('mMR2').value ? new Date(document.getElementById('mMR2').value) : null;
+        const measles = document.getElementById('measles').value ? new Date(document.getElementById('measles').value) : null;
+        const mumps = document.getElementById('mumps').value ? new Date(document.getElementById('mumps').value) : null;
+        const mea1 = document.getElementById('mea1').value ? new Date(document.getElementById('mea1').value) : null;
+        const mea2 = document.getElementById('mea2').value ? new Date(document.getElementById('mea2').value) : null;
+
+        const errors = [];
+
+        // 计算年龄
+        const ageInYears = (new Date().getYear() - birthDate.getYear())*12
+        const ageInDates = ((new Date().getDate())<(birthDate.getDate()))?1:0;
+        const ageInMonths = ageInYears + (new Date().getMonth() - birthDate.getMonth()) - ageInDates;
+       
+        //归一四个麻疹相关日期
+        // 将日期放入数组
+        //const dates = [mMR1, mMR2, measles, mumps].sort((a, b) => a - b);
+        const alldates = [mMR1, mMR2, measles, mumps, mea1, mea2].filter(date => date !== null).sort((a, b) => a - b);
+        const dates = alldates.filter(date => date >= getNextYearSameDate(birthDate)); // 仅保留大于等于 12 个月以后的日期
+
+        const allDDates = [dTP1,dTP2,dTP3,dTP4,dTP5].filter(date => date !== null).sort((a, b) => a - b);
+        const dtpDates = allDDates.filter(date => date >= birthDate.getTime() + 6*7*24*60*60*1000); // 仅保留大于等于 6 周以后的 dTP 日期
+
+
+        console.log(dates);
+        console.log(dtpDates);
+        console.log(ageInMonths);
+
+        // 过滤掉空值并排序
+        //const sortedDates = dates.filter(date => date !== null).sort((a, b) => a - b);
+       // const sortedDates = dates.sort();
+        // 创建 m1, m2, m3, m4
+     //   const m1 = sortedDates[0] || null;
+     //   const m2 = sortedDates[1] || null;
+     //   const m3 = sortedDates[2] || null;
+     //   const m4 = sortedDates[3] || null;
+
+        // 如果有空值，则确保从 m4 开始留空
+     //   error.push(dates);
+        
+        // 规则检查
+
+        if((ageInMonths<4 && ageInMonths >= 2)&&(dtpDates.length < 1)){
+            errors.push('* 2 到 4 个月需要至少 1 针百白破接种。（注：出生 6 周内接种的疫苗无效）');
+        }
+
+        if((ageInMonths<6 && ageInMonths >= 4)&&(dtpDates.length < 2)){
+            errors.push('* 4 到 6 个月需要至少 2 针百白破接种。（注：出生 6 周内接种的疫苗无效）');
+        }
+
+        if((ageInMonths<18 && ageInMonths >= 6)&&(dtpDates.length < 3)){
+            errors.push('* 6 到 18 个月需要至少 3 针百白破接种。（注：出生 6 周内接种的疫苗无效）');
+        }
+
+        if((ageInMonths<120 && ageInMonths >= 18)&&(dtpDates.length < 4)){
+            errors.push('* 10 岁以下 18 个月以上至少接种 4 针有效百白破疫苗。（注：出生 6 周内接种的疫苗无效）');
+        }
+        if((ageInMonths>=120)&&(dtpDates.length < 5)){
+            errors.push('* 10 岁以上至少接种 5 针有效百白破疫苗。（注：出生 6 周内接种的疫苗无效）');
+        }
+
+        if(dtpDates.length > 1 && dtpDates[1] - dtpDates[0] < 4 * 7 * 24 * 60 * 60 * 1000){
+            errors.push('* 百白破疫苗第一次和第二次接种之间必须间隔至少 4 周。');
+        }
+        if(dtpDates.length > 2 && dtpDates[2] - dtpDates[1]< 4 * 7 * 24 * 60 * 60 * 1000){
+            errors.push('* 百白破疫苗第二次和第三次接种之间必须间隔至少 4 周。');
+        }
+        if(dtpDates.length > 3 && !isOverNMonths(dtpDates[2],dtpDates[3],6)){
+            errors.push('* 百白破疫苗第三次和第四次接种之间必须间隔至少 6 个月。');
+        }
+        if(dtpDates.length > 4 && !isOverNMonths(dtpDates[4],dtpDates[5],6)){
+            errors.push('* 百白破疫苗第四次和第五次接种之间必须间隔至少 6 个月。');
+        }
+
+
+        if((ageInMonths>=12 && ageInMonths<15) && dates.length<1){
+            errors.push('* 年龄超过 12 个月必须至少接种一针有效麻疹类的疫苗。');
+        }       
+
+        if((ageInMonths>=15) && dates.length<2){
+            errors.push('* 年龄超过15个月必须至少接种两针有效麻疹疫苗。（注：出生 12 个月以内接种的麻疹类疫苗不算作有效疫苗。）');
+        }
+
+//        if (dates[0] && !isOverNMonths(birthDate,dates[0],12)){
+//            errors.push('* 麻疹类疫苗第一次接种时间必须在出生后12个月或以后。');
+//        }
+
+        if(dates.length > 1){
+            const minValue = dates[0]; // 最小值
+            const maxValue = dates[dates.length - 1]; // 最大值
+            const difference = maxValue - minValue; // 计算差值
+            if((ageInMonths>=15) && (difference < 4 * 7 * 24 * 60 * 60 * 1000)){
+                errors.push('* 两针麻疹类疫苗之间至少间隔 4 个周以上才有效。');
+            }
+        }
+        
+
+        
+        // 显示结果
+        const resultDiv = document.getElementById('result');
+        if (errors.length > 0) {
+            resultDiv.innerHTML = '<strong>测试不通过：</strong><br><br>' + errors.join('<br><br>');
+        } else {
+            resultDiv.innerHTML = '<strong>测试通过！</strong>';
+        }
+    });
+</script>
+
+</body>
+</html>
