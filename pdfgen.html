@@ -360,16 +360,27 @@
                 ["麻腮风疫苗（MMR）", "麻腮疫苗（MMR）", "麻风疫苗", "麻疹疫苗"].includes(record.vaccineName)
             );
 
-            // Get birth date for age calculation
-            const birthDate = new Date(pdfVaccinationRecord.personalInfo.birthDate);
+            if (!measlesVaccines.length) {
+                return { doses: [] };
+            }
+
+            // Get birth date for age calculation - use original format
+            const birthDate = new Date(pdfVaccinationRecord.personalInfo.originalBirthDate);
+
+            if (isNaN(birthDate.getTime())) {
+                return { doses: [] };
+            }
 
             // Sort doses by date and get unique dates
             const allDoses = measlesVaccines.flatMap(vaccine => 
-                vaccine.doses.filter(dose => {
-                    if (!dose || !dose.vaccinationDate) return false;
+                (vaccine.doses || []).filter(dose => {
+                    if (!dose || !dose.vaccinationDate) {
+                        return false;
+                    }
                     
                     // Calculate age in months when the dose was given
-                    const ageInMonths = calculateAgeInMonths(birthDate, dose.vaccinationDate);
+                    const doseDate = new Date(dose.vaccinationDate);
+                    const ageInMonths = calculateAgeInMonths(birthDate, doseDate);
                     
                     // Only include doses given at or after 12 months of age
                     return ageInMonths >= 12;
@@ -432,23 +443,19 @@
             try {
                 // Parse the JSON data
                 const vaccinationRecord = JSON.parse(decodeURIComponent(jsonData));
-                
-                console.log('Original Vaccination Record:', {
-                    personalInfo: vaccinationRecord.personalInfo,
-                    vaccinationRecords: vaccinationRecord.vaccinationRecords.map(record => ({
-                        vaccineName: record.vaccineName,
-                        doses: record.doses.filter(dose => dose && dose.vaccinationDate)  // Only show non-empty doses
-                    }))
-                });
 
                 // Copy personal information
+                const originalBirthDate = vaccinationRecord.personalInfo.birthDate;
                 Object.assign(pdfVaccinationRecord.personalInfo, {
                     name: vaccinationRecord.personalInfo.name,
                     sex: vaccinationRecord.personalInfo.sex,
                     passportID: vaccinationRecord.personalInfo.passportID,
-                    birthDate: convertDateFormat(vaccinationRecord.personalInfo.birthDate),
+                    birthDate: convertDateFormat(originalBirthDate),
                     birthCountry: vaccinationRecord.personalInfo.birthCountry
                 });
+
+                // Store original birth date for calculations
+                pdfVaccinationRecord.personalInfo.originalBirthDate = originalBirthDate;
 
                 // Process regular vaccines
                 vaccinationRecord.vaccinationRecords.forEach(record => {
@@ -482,20 +489,12 @@
                     r => r.vaccineName === "麻疹相关疫苗"
                 );
                 if (measlesRecord) {
-                    measlesRecord.doses = measlesDoses.doses;
+                    measlesRecord.doses = measlesDoses.doses || [];
                 }
-
-                console.log('Processed PDF Vaccination Record:', {
-                    personalInfo: pdfVaccinationRecord.personalInfo,
-                    vaccinationRecords: pdfVaccinationRecord.vaccinationRecords.map(record => ({
-                        vaccineName: record.vaccineName,
-                        doses: record.doses.filter(dose => dose.date)  // Only show non-empty doses
-                    }))
-                });
 
             } catch (error) {
                 console.error('Error parsing vaccination data:', error);
-                weui.alert('数据解析错误');
+                throw error;
             }
         }
 
@@ -692,17 +691,13 @@
 
                             // Add personal information
                             const personalInfo = pdfVaccinationRecord.personalInfo;
-                            console.log('Adding personal info to PDF:', personalInfo); // Debug log
                             addText(personalInfo.name, positions.personalInfo.name.x, positions.personalInfo.name.y, positions.personalInfo.name.page);
                             
                             // Add sex marker with debug logging
-                            console.log('Sex value:', personalInfo.sex); // Debug log
                             const sexValue = String(personalInfo.sex).toLowerCase();
                             if (sexValue === '男' || sexValue === 'male' || sexValue === 'm') {
-                                console.log('Adding male marker at:', positions.personalInfo.sex.male); // Debug log
                                 addText('v', positions.personalInfo.sex.male.x, positions.personalInfo.sex.male.y, positions.personalInfo.sex.male.page);
                             } else if (sexValue === '女' || sexValue === 'female' || sexValue === 'f') {
-                                console.log('Adding female marker at:', positions.personalInfo.sex.female); // Debug log
                                 addText('v', positions.personalInfo.sex.female.x, positions.personalInfo.sex.female.y, positions.personalInfo.sex.female.page);
                             }
                             
