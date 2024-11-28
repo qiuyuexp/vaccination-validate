@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>生成疫苗接种记录PDF</title>
+    <link rel="stylesheet" href="https://res.wx.qq.com/open/libs/weui/2.4.4/weui.min.css">
+    <script src="https://res.wx.qq.com/open/libs/weuijs/1.2.1/weui.min.js"></script>
+    <script src="https://unpkg.com/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js"></script>
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #07c160;
+            --error-color: #f44336;
+            --border-radius: 4px;
+            --background-color: #f7f7f7;
+            --box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--background-color);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+        }
+
+        .title {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+
+        .info-section {
+            margin-bottom: 20px;
+        }
+
+        .info-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .info-content {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: var(--border-radius);
+            margin-bottom: 20px;
+        }
+
+        .info-row {
+            display: flex;
+            margin-bottom: 10px;
+        }
+
+        .info-label {
+            width: 120px;
+            color: #666;
+        }
+
+        .info-value {
+            flex: 1;
+            color: #333;
+        }
+
+        .button-group {
+            margin: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+        }
+        .button-group .weui-btn {
+            width: 70%;
+            margin: 0;
+        }
+        .button-group .translate-link {
+            color: #576b95;
+            text-decoration: none;
+            white-space: nowrap;
+        }
+        .button-group .translate-link:hover {
+            text-decoration: underline;
+        }
+
+        .vaccine-card {
+            background: #fff;
+            border: 1px solid #e8e8e8;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        
+        .vaccine-header {
+            border-bottom: 1px solid #f0f0f0;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+        }
+        
+        .vaccine-doses {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .dose-row {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            background: #f9f9f9;
+            border-radius: 6px;
+        }
+        
+        .branding-input {
+            flex: 1;
+            min-width: 150px;
+            padding: 6px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+            background: #ffffff;
+        }
+        
+        .branding-input:hover {
+            border-color: #40a9ff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <input type="file" id="template-pdf" accept=".pdf" style="display: none;">
+        <h1 class="title">疫苗接种记录确认</h1>
+        
+        <div class="info-section">
+            <div class="info-title">个人信息</div>
+            <div id="personalInfo" class="info-content">
+                <!-- Will be populated by JavaScript -->
+            </div>
+        </div>
+
+        <div class="info-section">
+            <div class="info-title">疫苗接种记录</div>
+            <div id="vaccinationInfo" class="info-content">
+                <!-- Will be populated by JavaScript -->
+            </div>
+        </div>
+
+        <div class="button-group">
+            <a href="javascript:;" class="weui-btn weui-btn_primary" id="generatePDF">上传模板并生成 PDF</a>
+            <a href="javascript:;" class="translate-link" id="translateLink">翻译件参考</a>
+        </div>
+    </div>
+
+    <script>
+        // Define positions separately
+        const positions = {
+            personalInfo: {
+                name: { x: 115, y: 792, page: 0 },
+                sex: {
+                    male: { x: 113, y: 768, page: 0 },
+                    female: { x: 149, y: 768, page: 0 }
+                },
+                passportID: { x: 408, y: 780, page: 0 },
+                birthDate: { x: 125, y: 780, page: 0 },
+                birthCountry: { x: 408, y: 766, page: 0 }
+            },
+            signatureInfo: {
+                parentName: { x: 149, y: 206, page: 0 },
+                parentSignatureDate: { x: 232, y: 205, page: 0 },
+                relationship: {
+                    father: { x: 88, y: 187, page: 0 },
+                    mother: { x: 122, y: 187, page: 0 },
+                    guardian: { x: 161, y: 187, page: 0 }
+                },
+                doctor: {
+                    name: { x: 397, y: 241, page: 0 },
+                    signatureDate: { x: 487, y: 241, page: 0 },
+                    localName: { x: 441, y: 224, page: 0 },
+                    licenseNo: { x: 370, y: 205, page: 0 },
+                    defaults: {
+                        name: "Nathan",
+                        localName: "Xu Kuan",
+                        licenseNo: "M19934F",
+                    }
+                },
+                clinic: {
+                    name: { x: 397, y: 187, page: 0 },
+                    contactInfo: { x: 384, y: 170, page: 0 },
+                    address: { x: 328, y: 153, page: 0 },
+                    defaults: {
+                        name: "57 Medical Pte Ltd",
+                        contactInfo: "Nathan.xu@57medical.sg +6566947078",
+                        address: "57 Geylang Bahru, #01-3505, Singapore 330057"
+                    }
+                }
+            },
+            brandingOffset: 65,  // X offset from date to branding
+            horizontalBrandingStartX: 66,  // Starting X position for branding
+            horizontalDateStartX: 192,     // Starting X position for first date
+            horizontalDateSpacing: 73,     // X spacing between dates
+            horizontalStartY: 426,         // Starting Y position for first row
+            horizontalRowSpacing: 12,      // Y spacing between rows
+            vaccinations: {
+                // Main vaccines (vertical layout)
+                "百白破疫苗（DTaP）": { count: 5, startX: 125, startY: 687, page: 0 },
+                "麻疹相关疫苗": { count: 6, startX: 125, startY: 610, page: 0 },
+                "卡介苗（BCG）结核（TB）": { count: 1, startX: 125, startY: 516, page: 0 },
+                "乙肝疫苗（HepB）": { count: 3, startX: 125, startY: 490, page: 0 },
+                "脊髓灰质炎疫苗（脊灰疫苗，OPV/IPV）": { count: 5, startX: 125, startY: 440, page: 0 },
+                "B型流感嗜血杆菌": { count: 4, startX: 125, startY: 740, page: 1 },
+                "肺炎": { count: 3, startX: 125, startY: 677, page: 1 },
+                "水痘疫苗（VZV）": { count: 2, startX: 125, startY: 589, page: 1 },
+                "流感疫苗": { count: 4, startX: 125, startY: 550, page: 1 },
+                "HPV": { count: 2, startX: 125, startY: 628, page: 1 },
+
+                // Horizontal layout vaccines (all in a single row)
+                "白破疫苗（DT）": { type: "horizontal", page: 1 },
+                "甲肝疫苗（HepA）": { type: "horizontal", page: 1 },
+                "甲肝灭活/甲肝减毒": { type: "horizontal", page: 1 },
+                "轮状病毒疫苗": { type: "horizontal", page: 1 },
+                "乙脑疫苗（JEV）": { type: "horizontal", page: 1 },
+                "A群流脑多糖疫苗（MPSV-A）": { type: "horizontal", page: 1 },
+                "A+C群流脑多糖疫苗（MPSV-A+C）": { type: "horizontal", page: 1 }
+            }
+        };
+
+        // Function to get position for a vaccination dose
+        function getDosePosition(vaccineName, doseIndex, rowIndex = 0) {
+            const vaccinePos = positions.vaccinations[vaccineName];
+            
+            if (vaccinePos.type === "horizontal") {
+                const rowY = positions.horizontalStartY - (rowIndex * positions.horizontalRowSpacing);
+                return {
+                    date: { 
+                        x: positions.horizontalDateStartX + (doseIndex * positions.horizontalDateSpacing), 
+                        y: rowY,
+                        page: vaccinePos.page
+                    },
+                    branding: { 
+                        x: positions.horizontalBrandingStartX,
+                        y: rowY,
+                        page: vaccinePos.page
+                    }
+                };
+            }
+            
+            const y = vaccinePos.startY - (doseIndex * 12);
+            return {
+                date: { x: vaccinePos.startX, y, page: vaccinePos.page },
+                branding: { x: vaccinePos.startX + positions.brandingOffset, y, page: vaccinePos.page }
+            };
+        }
+
+        // Function to format birth date with spaces
+        function formatBirthDate(dateStr) {
+            if (!dateStr) return "";
+            try {
+                dateStr = String(dateStr);
+                // If the date is already in DD/MM/YYYY format, parse it
+                if (dateStr.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
+                    const [day, month, year] = dateStr.split('/');
+                    return `${day}  /   ${month}   /  ${year}`;
+                }
+                const date = new Date(dateStr);
+                if (isNaN(date.getTime())) return ""; // Invalid date
+                const day = String(date.getDate()).padStart(2, '0');
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const year = date.getFullYear();
+                return `${day}  /   ${month}   /  ${year}`;
+            } catch (e) {
+                console.error('Error formatting birth date:', e);
+                return String(dateStr);
+            }
+        }
+
+        // Function to format date as DD/MM/YYYY for both display and PDF
+        function formatDateDDMMYYYY(dateStr) {
+            if (!dateStr) return "";
+            try {
+                dateStr = String(dateStr);
+                // If the date is already in DD/MM/YYYY format, return it as is
+                if (dateStr.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
+                    return dateStr;
+                }
+                const date = new Date(dateStr);
+                if (isNaN(date.getTime())) return ""; // Invalid date
+                const day = String(date.getDate()).padStart(2, '0');
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const year = date.getFullYear();
+                return `${day}/${month}/${year}`;
+            } catch (e) {
+                console.error('Error formatting date:', e);
+                return String(dateStr);
+            }
+        }
+
+        // Helper function to convert date format from YYYY-MM-DD to DD/MM/YYYY
+        function convertDateFormat(dateStr) {
+            return formatDateDDMMYYYY(dateStr);
+        }
+
+        // Helper function to calculate age in months precisely
+        function calculateAgeInMonths(birthDate, doseDate) {
+            const birth = new Date(birthDate);
+            const dose = new Date(doseDate);
+            
+            let months = (dose.getFullYear() - birth.getFullYear()) * 12;
+            months += dose.getMonth() - birth.getMonth();
+            
+            // Adjust for day of month
+            if (dose.getDate() < birth.getDate()) {
+                months--;
+            }
+            
+            return months;
+        }
+
+        // Define branding map for vaccines
+        const brandingMap = {
+            '百白破疫苗（DTaP）': 'DTaP',
+            '麻腮风疫苗（MMR）': 'MMR',
+            '麻腮疫苗（MMR）': 'Measles&Mumps',
+            '麻风疫苗': 'Measles&Rubella',
+            '麻疹疫苗': 'Measles',
+            '卡介苗（BCG）结核（TB）': 'BCG',
+            '乙肝疫苗（HepB）': 'HepB',
+            '脊髓灰质炎疫苗（脊灰疫苗，OPV/IPV）': 'OPV/IPV',
+            '白破疫苗（DT）': 'DT',
+            'B型流感嗜血杆菌': 'Hib',
+            '肺炎': 'PCV',
+            '水痘疫苗（VZV）': 'VZV',
+            '流感疫苗': 'Influenza',
+            '甲肝疫苗（HepA）': 'HepA',
+            '甲肝灭活/甲肝减毒': 'HepA',
+            '轮状病毒疫苗': 'RV',
+            '乙脑疫苗（JEV）': 'JE',
+            'A群流脑多糖疫苗（MPSV-A）': 'MPSV-A',
+            'A+C群流脑多糖疫苗（MPSV-A+C）': 'MPSV-AC',
+            'HPV': 'HPV'
+        };
+
+        function getDefaultBranding(vaccineName) {
+            return brandingMap[vaccineName] || '';
+        }
+
+        // Function to process measles-related vaccines
+        function processMeaslesVaccines(records) {
+            const measlesVaccines = records.filter(record => 
+                ["麻腮风疫苗（MMR）", "麻腮疫苗（MMR）", "麻风疫苗", "麻疹疫苗"].includes(record.vaccineName)
+            );
+
+            // Get birth date for age calculation
+            const birthDate = new Date(pdfVaccinationRecord.personalInfo.birthDate);
+
+            // Sort doses by date and get unique dates
+            const allDoses = measlesVaccines.flatMap(vaccine => 
+                vaccine.doses.filter(dose => {
+                    if (!dose || !dose.vaccinationDate) return false;
+                    
+                    // Calculate age in months when the dose was given
+                    const ageInMonths = calculateAgeInMonths(birthDate, dose.vaccinationDate);
+                    
+                    // Only include doses given at or after 12 months of age
+                    return ageInMonths >= 12;
+                })
+                .map(dose => ({
+                    date: dose.vaccinationDate,
+                    branding: dose.vaccinationBranding || getDefaultBranding(vaccine.vaccineName),
+                    doseNumber: dose.doseNumber,
+                    vaccineName: vaccine.vaccineName
+                }))
+            );
+
+            // Sort by date
+            allDoses.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            // Remove duplicates based on date
+            const uniqueDoses = allDoses.reduce((acc, curr) => {
+                if (!acc.find(dose => dose.date === curr.date)) {
+                    acc.push(curr);
+                }
+                return acc;
+            }, []);
+
+            // Keep only the last 4 doses if there are more
+            const finalDoses = uniqueDoses.slice(-4);
+
+            // Map to final format
+            return {
+                doses: finalDoses.map((dose, index) => ({
+                    doseNumber: index + 1,
+                    date: convertDateFormat(dose.date),
+                    branding: dose.branding
+                }))
+            };
+        }
+
+        // Initialize the vaccination record structure with default English branding
+        let pdfVaccinationRecord = {
+            personalInfo: {
+                name: "",
+                sex: "",  // 'male' or 'female'
+                passportID: "",
+                birthDate: "",
+                birthCountry: ""
+            },
+            vaccinationRecords: Object.entries(positions.vaccinations).map(([name, config]) => {
+                // Define English translations for vaccine branding
+                return {
+                    vaccineName: name,
+                    doses: Array(config.count || 1).fill(null).map((_, i) => ({
+                        doseNumber: i + 1,
+                        date: "",
+                        branding: getDefaultBranding(name)
+                    }))
+                };
+            })
+        };
+
+        function parseVaccinationData(jsonData) {
+            try {
+                // Parse the JSON data
+                const vaccinationRecord = JSON.parse(decodeURIComponent(jsonData));
+                
+                console.log('Original Vaccination Record:', {
+                    personalInfo: vaccinationRecord.personalInfo,
+                    vaccinationRecords: vaccinationRecord.vaccinationRecords.map(record => ({
+                        vaccineName: record.vaccineName,
+                        doses: record.doses.filter(dose => dose && dose.vaccinationDate)  // Only show non-empty doses
+                    }))
+                });
+
+                // Copy personal information
+                Object.assign(pdfVaccinationRecord.personalInfo, {
+                    name: vaccinationRecord.personalInfo.name,
+                    sex: vaccinationRecord.personalInfo.sex,
+                    passportID: vaccinationRecord.personalInfo.passportID,
+                    birthDate: convertDateFormat(vaccinationRecord.personalInfo.birthDate),
+                    birthCountry: vaccinationRecord.personalInfo.birthCountry
+                });
+
+                // Process regular vaccines
+                vaccinationRecord.vaccinationRecords.forEach(record => {
+                    if (!["麻腮风疫苗（MMR）", "麻腮疫苗（MMR）", "麻风疫苗", "麻疹疫苗"].includes(record.vaccineName)) {
+                        const pdfRecord = pdfVaccinationRecord.vaccinationRecords.find(
+                            r => r.vaccineName === record.vaccineName
+                        );
+                        if (pdfRecord) {
+                            // Initialize doses array if needed
+                            if (!pdfRecord.doses) {
+                                pdfRecord.doses = [];
+                            }
+                            
+                            record.doses.forEach((dose, index) => {
+                                if (dose && dose.vaccinationDate) {
+                                    // Create or update dose at index
+                                    pdfRecord.doses[index] = {
+                                        doseNumber: index + 1,
+                                        date: convertDateFormat(dose.vaccinationDate),
+                                        branding: dose.vaccinationBranding || getDefaultBranding(record.vaccineName)
+                                    };
+                                }
+                            });
+                        }
+                    }
+                });
+
+                // Process measles-related vaccines
+                const measlesDoses = processMeaslesVaccines(vaccinationRecord.vaccinationRecords);
+                const measlesRecord = pdfVaccinationRecord.vaccinationRecords.find(
+                    r => r.vaccineName === "麻疹相关疫苗"
+                );
+                if (measlesRecord) {
+                    measlesRecord.doses = measlesDoses.doses;
+                }
+
+                console.log('Processed PDF Vaccination Record:', {
+                    personalInfo: pdfVaccinationRecord.personalInfo,
+                    vaccinationRecords: pdfVaccinationRecord.vaccinationRecords.map(record => ({
+                        vaccineName: record.vaccineName,
+                        doses: record.doses.filter(dose => dose.date)  // Only show non-empty doses
+                    }))
+                });
+
+            } catch (error) {
+                console.error('Error parsing vaccination data:', error);
+                weui.alert('数据解析错误');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Get the data from URL parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            const jsonData = urlParams.get('data');
+            
+            if (!jsonData) {
+                weui.alert('没有找到疫苗接种记录数据');
+                return;
+            }
+
+            parseVaccinationData(jsonData);
+
+            // Display personal information
+            const personalInfoDiv = document.getElementById('personalInfo');
+            personalInfoDiv.innerHTML = `
+                <div class="info-row">
+                    <div class="info-label">姓名：</div>
+                    <div class="info-value">${pdfVaccinationRecord.personalInfo.name || '-'}</div>
+                </div>
+                <div class="info-row">
+                    <div class="info-label">性别：</div>
+                    <div class="info-value">${pdfVaccinationRecord.personalInfo.sex || '-'}</div>
+                </div>
+                <div class="info-row">
+                    <div class="info-label">护照号：</div>
+                    <div class="info-value">${pdfVaccinationRecord.personalInfo.passportID || '-'}</div>
+                </div>
+                <div class="info-row">
+                    <div class="info-label">出生日期：</div>
+                    <div class="info-value">${pdfVaccinationRecord.personalInfo.birthDate || '-'}</div>
+                </div>
+                <div class="info-row">
+                    <div class="info-label">出生国家：</div>
+                    <div class="info-value">${pdfVaccinationRecord.personalInfo.birthCountry || '-'}</div>
+                </div>
+            `;
+
+            // Display vaccination records
+            const vaccinationInfoDiv = document.getElementById('vaccinationInfo');
+            let vaccinationHtml = '';
+            
+            pdfVaccinationRecord.vaccinationRecords.forEach((vaccine, vaccineIndex) => {
+                if (vaccine.doses.some(dose => dose.date)) {  // Only show vaccines with dates
+                    const isHorizontal = positions.vaccinations[vaccine.vaccineName]?.type === "horizontal";
+                    
+                    vaccinationHtml += `
+                        <div class="vaccine-card" style="
+                            background: #fff;
+                            border: 1px solid #e8e8e8;
+                            border-radius: 8px;
+                            padding: 15px;
+                            margin-bottom: 20px;
+                            box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                            <div class="vaccine-header" style="
+                                border-bottom: 1px solid #f0f0f0;
+                                margin-bottom: 15px;
+                                padding-bottom: 10px;">
+                                <div style="font-weight: bold; color: #333; font-size: 15px;">
+                                    ${vaccine.vaccineName}
+                                </div>
+                            </div>
+                            <div class="vaccine-doses" style="display: flex; flex-direction: column; gap: 12px;">
+                                ${vaccine.doses.map((dose, doseIndex) => 
+                                    dose.date ? 
+                                    `<div class="dose-row" style="
+                                        display: flex;
+                                        align-items: center;
+                                        padding: 8px;
+                                        background: #f9f9f9;
+                                        border-radius: 6px;
+                                        ${doseIndex % 2 === 0 ? 'background: #f9f9f9;' : 'background: #ffffff;'}">
+                                        <div style="flex: 0 0 80px; color: #666;">第${doseIndex + 1}剂:</div>
+                                        <div style="flex: 0 0 120px;">${formatDateDDMMYYYY(dose.date)}</div>
+                                        ${(!isHorizontal || doseIndex === 0) ? 
+                                            `<input type="text" 
+                                                class="branding-input" 
+                                                data-vaccine-index="${vaccineIndex}" 
+                                                data-dose-index="${doseIndex}" 
+                                                value="${dose.branding || ''}" 
+                                                placeholder="请输入疫苗批号"
+                                                style="
+                                                    flex: 1;
+                                                    min-width: 150px;
+                                                    padding: 6px 12px;
+                                                    border: 1px solid #ddd;
+                                                    border-radius: 4px;
+                                                    font-size: 14px;
+                                                    transition: border-color 0.3s;
+                                                    background: #ffffff;
+                                                "
+                                                onmouseover="this.style.borderColor='#40a9ff'"
+                                                onmouseout="this.style.borderColor='#ddd'"
+                                            >` : ''
+                                        }
+                                    </div>` : 
+                                    ''
+                                ).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+            
+            vaccinationInfoDiv.innerHTML = vaccinationHtml || `
+                <div class="info-row" style="
+                    text-align: center;
+                    padding: 30px;
+                    color: #999;
+                    font-size: 15px;
+                    background: #f9f9f9;
+                    border-radius: 8px;">
+                    暂无接种记录
+                </div>`;
+
+            // Add event listeners for branding inputs
+            document.querySelectorAll('.branding-input').forEach(input => {
+                const isHorizontal = positions.vaccinations[pdfVaccinationRecord.vaccinationRecords[parseInt(input.dataset.vaccineIndex)].vaccineName]?.type === "horizontal";
+                
+                input.addEventListener('change', (e) => {
+                    const vaccineIndex = parseInt(e.target.dataset.vaccineIndex);
+                    const doseIndex = parseInt(e.target.dataset.doseIndex);
+                    const newBranding = e.target.value.trim();
+                    
+                    // Update the stored data
+                    if (isHorizontal) {
+                        // For horizontal vaccines, update all doses with the same branding
+                        pdfVaccinationRecord.vaccinationRecords[vaccineIndex].doses.forEach(dose => {
+                            if (dose) {
+                                dose.branding = newBranding;
+                            }
+                        });
+                    } else {
+                        // For vertical vaccines, update only the specific dose
+                        pdfVaccinationRecord.vaccinationRecords[vaccineIndex].doses[doseIndex].branding = newBranding;
+                    }
+                    
+                    // Log the update
+                    console.log(`Updated branding for ${pdfVaccinationRecord.vaccinationRecords[vaccineIndex].vaccineName} dose ${doseIndex + 1} to: ${newBranding}`);
+                });
+
+                // Add paste event listener
+                input.addEventListener('paste', (e) => {
+                    setTimeout(() => {
+                        input.dispatchEvent(new Event('change'));
+                    }, 0);
+                });
+            });
+
+            // Add event listeners for buttons
+            document.getElementById('generatePDF').addEventListener('click', async function() {
+                try {
+                    // Get the template input element
+                    const templateInput = document.getElementById('template-pdf');
+                    
+                    // Clear any previous value
+                    templateInput.value = '';
+                    
+                    // Set up the onchange handler
+                    templateInput.onchange = async function(event) {
+                        try {
+                            const file = event.target.files[0];
+                            if (!file) {
+                                alert('Please select the template PDF file.');
+                                return;
+                            }
+
+                            // Read the template PDF file
+                            const existingPdfBytes = await file.arrayBuffer();
+                            
+                            // Create PDF document using the global PDFLib namespace
+                            const pdfDoc = await PDFLib.PDFDocument.load(existingPdfBytes);
+                            const pages = pdfDoc.getPages();
+                            const helveticaFont = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
+
+                            // Helper function to add text with Helvetica 9pt
+                            const addText = (text, x, y, pageNum) => {
+                                if (text && pageNum < pages.length) {
+                                    pages[pageNum].drawText(text.toString(), {
+                                        x: x,
+                                        y: y,
+                                        size: 9,
+                                        font: helveticaFont,
+                                        color: PDFLib.rgb(0, 0, 0),
+                                        lineHeight: 9
+                                    });
+                                }
+                            };
+
+                            // Helper function to format date to DD/MM/YYYY
+                            const formatDate = formatDateDDMMYYYY;  // Use the same formatting function
+
+                            // Add personal information
+                            const personalInfo = pdfVaccinationRecord.personalInfo;
+                            console.log('Adding personal info to PDF:', personalInfo); // Debug log
+                            addText(personalInfo.name, positions.personalInfo.name.x, positions.personalInfo.name.y, positions.personalInfo.name.page);
+                            
+                            // Add sex marker with debug logging
+                            console.log('Sex value:', personalInfo.sex); // Debug log
+                            const sexValue = String(personalInfo.sex).toLowerCase();
+                            if (sexValue === '男' || sexValue === 'male' || sexValue === 'm') {
+                                console.log('Adding male marker at:', positions.personalInfo.sex.male); // Debug log
+                                addText('v', positions.personalInfo.sex.male.x, positions.personalInfo.sex.male.y, positions.personalInfo.sex.male.page);
+                            } else if (sexValue === '女' || sexValue === 'female' || sexValue === 'f') {
+                                console.log('Adding female marker at:', positions.personalInfo.sex.female); // Debug log
+                                addText('v', positions.personalInfo.sex.female.x, positions.personalInfo.sex.female.y, positions.personalInfo.sex.female.page);
+                            }
+                            
+                            // Add passport ID and other personal information
+                            addText(personalInfo.passportID, positions.personalInfo.passportID.x, positions.personalInfo.passportID.y, positions.personalInfo.passportID.page);
+                            // Format birth date with spaces
+                            const formattedBirthDate = formatBirthDate(personalInfo.birthDate);
+                            addText(formattedBirthDate, positions.personalInfo.birthDate.x, positions.personalInfo.birthDate.y, positions.personalInfo.birthDate.page);
+                            addText(personalInfo.birthCountry, positions.personalInfo.birthCountry.x, positions.personalInfo.birthCountry.y, positions.personalInfo.birthCountry.page);
+
+                            // Add vaccination records
+                            let currentRow = 0;  // Track which row we're on
+                            
+                            // Process vertical vaccines first
+                            pdfVaccinationRecord.vaccinationRecords
+                                .filter(vaccine => !positions.vaccinations[vaccine.vaccineName]?.type)
+                                .forEach(vaccine => {
+                                    const posInfo = positions.vaccinations[vaccine.vaccineName];
+                                    if (posInfo) {
+                                        vaccine.doses.forEach((dose, index) => {
+                                            if (dose && dose.date) {
+                                                const pos = getDosePosition(vaccine.vaccineName, index);
+                                                addText(dose.date, pos.date.x, pos.date.y, pos.date.page);
+                                                if (dose.branding) {
+                                                    addText(dose.branding, pos.branding.x, pos.branding.y, pos.branding.page);
+                                                }
+                                            }
+                                        });
+                                    }
+                                });
+                            
+                            // Process horizontal vaccines
+                            pdfVaccinationRecord.vaccinationRecords
+                                .filter(vaccine => positions.vaccinations[vaccine.vaccineName]?.type === "horizontal")
+                                .forEach(vaccine => {
+                                    const posInfo = positions.vaccinations[vaccine.vaccineName];
+                                    if (posInfo) {
+                                        // Only process if there are non-empty doses
+                                        const nonEmptyDoses = vaccine.doses.filter(dose => dose && dose.date);
+                                        if (nonEmptyDoses.length > 0) {
+                                            // Add branding if available
+                                            const firstDose = nonEmptyDoses[0];
+                                            if (firstDose.branding) {
+                                                const pos = getDosePosition(vaccine.vaccineName, 0, currentRow);
+                                                addText(firstDose.branding, pos.branding.x, pos.branding.y, pos.branding.page);
+                                            }
+                                            
+                                            // Add doses in the same row
+                                            nonEmptyDoses.forEach((dose, index) => {
+                                                const pos = getDosePosition(vaccine.vaccineName, index, currentRow);
+                                                addText(dose.date, pos.date.x, pos.date.y, pos.date.page);
+                                            });
+                                            
+                                            // Move to next row if this vaccine had data
+                                            currentRow++;
+                                        }
+                                    }
+                                });
+
+                            // Add signature information
+                            const now = new Date();
+                            const formattedNow = formatDateDDMMYYYY(now);
+
+                            // Add doctor information
+                            const doctorInfo = positions.signatureInfo.doctor;
+                            addText(doctorInfo.defaults.name, doctorInfo.name.x, doctorInfo.name.y, doctorInfo.name.page);
+                            addText(formattedNow, doctorInfo.signatureDate.x, doctorInfo.signatureDate.y, doctorInfo.signatureDate.page);
+                            addText(doctorInfo.defaults.localName, doctorInfo.localName.x, doctorInfo.localName.y, doctorInfo.localName.page);
+                            addText(doctorInfo.defaults.licenseNo, doctorInfo.licenseNo.x, doctorInfo.licenseNo.y, doctorInfo.licenseNo.page);
+
+                            // Add clinic information
+                            const clinicInfo = positions.signatureInfo.clinic;
+                            addText(clinicInfo.defaults.name, clinicInfo.name.x, clinicInfo.name.y, clinicInfo.name.page);
+                            addText(clinicInfo.defaults.contactInfo, clinicInfo.contactInfo.x, clinicInfo.contactInfo.y, clinicInfo.contactInfo.page);
+                            addText(clinicInfo.defaults.address, clinicInfo.address.x, clinicInfo.address.y, clinicInfo.address.page);
+
+                            // Save and download the PDF
+                            const pdfBytes = await pdfDoc.save();
+                            const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = `vaccination_record_${personalInfo.name}_${formattedNow.replace(/\//g, '-')}.pdf`;
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            URL.revokeObjectURL(url);
+
+                            // Clear the file input so it can be reused
+                            event.target.value = '';
+
+                        } catch (error) {
+                            console.error('Error processing PDF:', error);
+                            alert('Error processing PDF. Please check console for details.');
+                        }
+                    };
+                    
+                    // Trigger the file input
+                    templateInput.click();
+
+                } catch (error) {
+                    console.error('Error generating PDF:', error);
+                    alert('Error generating PDF. Please check console for details.');
+                }
+            });
+
+            // Add translation link handler
+            document.getElementById('translateLink').addEventListener('click', function() {
+                // Create URL with query parameters
+                const queryParams = new URLSearchParams({
+                    data: encodeURIComponent(JSON.stringify({
+                        personalInfo: pdfVaccinationRecord.personalInfo,
+                        vaccinationRecords: pdfVaccinationRecord.vaccinationRecords
+                    }))
+                });
+                
+                // Open translation.html in a new tab with the data
+                window.open(`translation.html?${queryParams.toString()}`, '_blank');
+            });
+        });
+    </script>
+</body>
+</html>

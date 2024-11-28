@@ -1,0 +1,2123 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>疫苗接种记录</title>
+    <link rel="stylesheet" href="https://res.wx.qq.com/open/libs/weui/2.4.4/weui.min.css">
+    <script src="https://res.wx.qq.com/open/libs/weuijs/1.2.1/weui.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/fontkit.min.js"></script>
+    <script>
+        window.PDFLib = window.PDFLib || {};
+        window.fontkit = window.fontkit || {};
+    </script>
+    <script src="js/pdf-generator.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+    <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';</script>
+    <script src="js/pdf-viewer.js"></script>
+    <style>
+        :root {
+            --primary-color: #07c160;
+            --error-color: #f44336;
+            --border-radius: 4px;
+            --background-color: #f7f7f7;
+            --box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--background-color);
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .page {
+            max-width: none;
+            margin: 0;
+            padding: 24px 16px;
+            box-sizing: border-box;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #step2 {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .card {
+            background: #fff;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            padding: 24px;
+        }
+
+        .weui-form__title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #333;
+            text-align: center;
+            margin: 0 0 16px 0;
+            padding: 8px 0;
+            flex-shrink: 0;
+        }
+
+        .pdf-view-area {
+            flex: 1;
+            min-height: 200px;
+            overflow: auto;
+            background: #f8f8f8;
+            border-radius: var(--border-radius);
+            padding: 16px;
+            border: 1px dashed #ddd;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        .pdf-view-area.has-pdf {
+            cursor: default;
+            min-height: 0;
+            border: none;
+            background: #fff;
+            display: block;
+        }
+
+        .pdf-view-area:not(.has-pdf):before {
+            content: "点击上传PDF文件";
+            color: #999;
+        }
+
+        .reupload-link {
+            display: none;
+            color: #07c160;
+            text-decoration: none;
+            margin-top: 8px;
+        }
+
+        .reupload-link.visible {
+            display: block;
+        }
+
+        .weui-uploader {
+            width: auto;
+            margin: 0;
+        }
+
+        .weui-uploader__bd {
+            margin: 0;
+            display: flex;
+            align-items: center;
+        }
+
+        .weui-uploader__input-box {
+            margin: 0;
+            width: 32px !important;
+            height: 32px !important;
+            border: 1px dashed #ddd;
+        }
+
+        .file-info {
+            margin: 0 0 0 8px;
+            padding: 4px 8px;
+            background-color: transparent;
+            font-size: 14px;
+        }
+
+        .file-icon {
+            width: 16px;
+            height: 16px;
+        }
+
+        .weui-uploader__hd {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .weui-uploader__title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .weui-uploader__info {
+            color: #999;
+            font-size: 14px;
+        }
+
+        .weui-uploader__bd {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+        }
+
+        .weui-uploader__input-box {
+            margin: 0 auto;
+            width: 120px !important;
+            height: 120px !important;
+            border: 2px dashed #ddd;
+            border-radius: var(--border-radius);
+            transition: all 0.3s ease;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .weui-uploader__input {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .weui-uploader__input-box:before,
+        .weui-uploader__input-box:after {
+            content: '';
+            position: absolute;
+            background-color: #ddd;
+            transition: all 0.3s ease;
+        }
+
+        .weui-uploader__input-box:before {
+            width: 2px;
+            height: 40px;
+        }
+
+        .weui-uploader__input-box:after {
+            width: 40px;
+            height: 2px;
+        }
+
+        .file-info {
+            margin-top: 16px;
+            padding: 12px;
+            background-color: #f8f8f8;
+            border-radius: var(--border-radius);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .file-info.hidden {
+            display: none;
+        }
+
+        .file-icon {
+            width: 24px;
+            height: 24px;
+            fill: var(--primary-color);
+        }
+
+        .weui-btn {
+            font-size: 16px;
+            font-weight: 600;
+            padding: 12px 24px;
+            border-radius: var(--border-radius);
+            margin: 32px auto 0;
+            width: calc(100% - 32px);
+            max-width: 320px;
+            transition: all 0.3s ease;
+        }
+
+        .weui-btn_primary {
+            background-color: var(--primary-color);
+        }
+
+        .weui-btn_primary:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        .weui-btn_default {
+            background-color: #f2f2f2;
+            color: #333;
+        }
+
+        .weui-btn_default:hover {
+            background-color: #e5e5e5;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        /* Toast customization */
+        .weui-toast {
+            width: auto;
+            min-width: 120px;
+            max-width: 240px;
+            padding: 12px 24px;
+            border-radius: var(--border-radius);
+        }
+
+        .weui-icon_toast {
+            margin-bottom: 8px;
+        }
+
+        .weui-toast__content {
+            font-size: 14px;
+            padding: 0;
+        }
+
+        /* Two-column layout styles */
+        .two-column-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            flex: 1;
+            min-height: 0;  /* Added this to prevent flex overflow */
+            overflow: hidden;
+            margin-top: -24px;
+        }
+
+        .pdf-container {
+            background: #fff;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            padding: 16px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .right-column {
+            height: 100%;
+            overflow: auto;
+            padding: 10px;
+        }
+
+        .right-column-content {
+            max-width: 100%;
+            margin: 0;
+            padding: 0 10px;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        /* PDF Viewer Styles */
+        .pdf-page-container {
+            margin-bottom: 20px;
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            width: 100%;
+        }
+
+        .pdf-page-container canvas {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        canvas {
+            max-width: 100%;
+            height: auto !important;
+            display: block;
+            margin: 0 auto;
+        }
+
+        .date-input-wrapper {
+            position: relative;
+            margin-bottom: 16px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .date-input-wrapper label {
+            margin-bottom: 8px;
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .input-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        input.date-input {
+            width: 100%;
+            padding: 12px;
+            padding-right: 40px;
+            border: 1px solid #ddd;
+            border-radius: var(--border-radius);
+            font-size: 16px;
+            background-color: white;
+            box-sizing: border-box;
+            color: #333;
+        }
+
+        input.date-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+        }
+
+        /* Calendar icon */
+        .calendar-icon {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23666666'%3E%3Cpath d='M19 4h-1V3c0-.55-.45-1-1-1s-1 .45-1 1v1H8V3c0-.55-.45-1-1-1s-1 .45-1 1v1H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zM5 8V6h14v2H5z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: center;
+            background-size: contain;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+            z-index: 1;
+        }
+
+        .calendar-icon {
+            z-index: 1;
+        }
+
+        .calendar-icon:hover {
+            opacity: 1;
+        }
+
+        /* Clear icon */
+        .clear-icon {
+            display: none;
+            position: absolute;
+            right: 32px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 20px;
+            height: 20px;
+            background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23999"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>');
+            cursor: pointer;
+            z-index: 1;
+        }
+
+        @media (max-width: 480px) {
+            input.date-input {
+                pointer-events: none;
+                background-color: #fff;
+            }
+
+            .input-container {
+                cursor: pointer;
+            }
+
+            .calendar-icon {
+                display: none;
+            }
+
+            .clear-icon {
+                display: block;
+                right: 8px;
+            }
+        }
+
+        .vaccination-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 16px;
+            background: white;
+        }
+
+        .vaccination-table th,
+        .vaccination-table td {
+            padding: 12px;
+            border: 1px solid #eee;
+            text-align: left;
+        }
+
+        .vaccination-table th {
+            background: #f7f7f7;
+            font-weight: normal;
+            color: #666;
+        }
+
+        .vaccination-table td {
+            vertical-align: middle;
+        }
+
+        .vaccination-table input[type="date"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .vaccination-table input[type="date"]:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(7, 193, 96, 0.2);
+        }
+
+        /* Adjust button group for full screen */
+        .button-group {
+            position: relative;
+            z-index: 2;
+            background: white;
+            padding: 8px 16px;
+            margin-top: auto;
+            border-top: 1px solid #eee;
+            display: flex;
+            align-items: center;
+            min-height: 60px;
+        }
+
+        .button-group .weui-btn {
+            margin: 0;
+            line-height: 2;
+            font-size: 15px;
+            width: 100%;
+            display: block;
+        }
+
+        .vaccination-records {
+            position: relative;
+            overflow: auto;
+            flex: 1;
+            margin-bottom: 8px;
+        }
+
+        .text-input {
+            width: 100%;
+            height: 32px;
+            padding: 4px 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+            transition: border-color 0.3s ease;
+        }
+
+        .text-input:focus {
+            border-color: var(--primary-color);
+            outline: none;
+        }
+
+        .date-input {
+            padding-right: 28px; /* Make room for calendar icon */
+        }
+
+        @media (max-width: 768px) {
+            .two-column-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .pdf-container {
+                height: 60vh;
+                border-right: none;
+                border-bottom: 1px solid #eee;
+            }
+
+            .right-column {
+                height: auto;
+                max-height: calc(40vh - 56px);
+            }
+        }
+
+        .error-message {
+            color: var(--error-color);
+            font-size: 12px;
+            margin-top: 4px;
+            display: none;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        input.date-input.error {
+            border-color: var(--error-color);
+        }
+
+        .personal-info-section {
+            margin-bottom: 16px;
+            background: #fff;
+            padding: 12px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+        }
+
+        .personal-info-section .info-row {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .personal-info-section .info-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .personal-info-section .input-group {
+            margin: 0;
+        }
+
+        .personal-info-section .half-width {
+            width: calc(50% - 6px);
+        }
+
+        .personal-info-section .third-width {
+            width: calc(33.33% - 8px);
+        }
+
+        .personal-info-section .input-container {
+            position: relative;
+        }
+
+        .personal-info-section .weui-input {
+            width: 100%;
+            height: 32px;
+            padding: 4px 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+            transition: border-color 0.3s ease;
+        }
+
+        .personal-info-section .weui-input:focus {
+            border-color: var(--primary-color);
+            outline: none;
+        }
+
+        .personal-info-section .radio-group {
+            display: flex;
+            gap: 16px;
+            height: 32px;
+            align-items: center;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 0 8px;
+        }
+
+        .personal-info-section .radio-label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .personal-info-section .radio-label input[type="radio"] {
+            margin: 0 4px 0 0;
+            width: 14px;
+            height: 14px;
+        }
+
+        .personal-info-section .radio-label span {
+            font-size: 14px;
+            color: #333;
+        }
+
+        .personal-info-section .calendar-icon {
+            width: 16px;
+            height: 16px;
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .upload-area.hidden {
+            display: none;
+        }
+
+        .reupload-link {
+            display: none;
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            padding: 4px 8px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: var(--border-radius);
+            color: var(--primary-color);
+            text-decoration: none;
+            font-size: 14px;
+            z-index: 1000;
+            border: 1px solid var(--primary-color);
+        }
+
+        .reupload-link:hover {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .reupload-link.visible {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div id="mainPage" class="page">
+        <h1 class="weui-form__title">疫苗接种记录</h1>
+
+        <div id="step2" class="weui-form">
+            <div class="two-column-layout">
+                <!-- Left Column: PDF Viewer -->
+                <div class="pdf-container">
+                    <input type="file" id="fileInput" accept="application/pdf" style="display: none;">
+                    <div id="pdfViewer" class="pdf-view-area"></div>
+                    <a href="#" class="reupload-link">重新上传</a>
+                </div>
+
+                <!-- Right Column: Form and Actions -->
+                <div class="right-column">
+                    <div class="right-column-content">
+                        <div class="personal-info-section">
+                            <div class="info-row">
+                                <div class="input-group half-width">
+                                    <div class="input-container">
+                                        <input type="text" class="text-input" id="name" name="name" placeholder="姓名">
+                                    </div>
+                                </div>
+                                
+                                <div class="input-group half-width">
+                                    <div class="input-container">
+                                        <input type="text" class="text-input" id="passport" name="passportID" placeholder="护照号">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="info-row">
+                                <div class="input-group third-width">
+                                    <div class="input-container">
+                                        <input type="text" class="weui-input date-input" id="birthDate" name="birthDate" placeholder="出生日期" readonly>
+                                        <div class="calendar-icon"></div>
+                                    </div>
+                                </div>
+
+                                <div class="input-group third-width">
+                                    <div class="input-container">
+                                        <input type="text" class="text-input" id="birthCountry" name="birthCountry" placeholder="出生国">
+                                    </div>
+                                </div>
+
+                                <div class="input-group third-width">
+                                    <div class="radio-group">
+                                        <label class="radio-label">
+                                            <input type="radio" name="sex" value="男" checked>
+                                            <span>男</span>
+                                        </label>
+                                        <label class="radio-label">
+                                            <input type="radio" name="sex" value="女">
+                                            <span>女</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="vaccination-records">
+                            <table class="vaccination-table">
+                                <thead>
+                                    <tr>
+                                        <th>疫苗名称</th>
+                                        <th>接种日期</th>
+                                        <th>VaccineName</th>
+                                        <th>剂次</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td rowspan="5">百白破疫苗（DTaP）</td>
+                                        <td>
+                                            <div class="input-container">
+                                                <input type="text" class="date-input weui-input" 
+                                                       data-vaccine="百白破疫苗（DTaP）" 
+                                                       data-dose="1" 
+                                                       placeholder="请选择接种日期">
+                                                <div class="calendar-icon"></div>
+                                                <div class="clear-icon"></div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-name">
+                                                <input type="text" class="text-input" placeholder="疫苗名称" data-vaccine="百白破疫苗（DTaP）" data-dose-number="1">
+                                            </div>
+                                        </td>
+                                        <td>1/5</td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <div class="input-container">
+                                                <input type="text" class="date-input weui-input" 
+                                                       data-vaccine="百白破疫苗（DTaP）" 
+                                                       data-dose="2" 
+                                                       placeholder="请选择接种日期">
+                                                <div class="calendar-icon"></div>
+                                                <div class="clear-icon"></div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-name">
+                                                <input type="text" class="text-input" placeholder="疫苗名称" data-vaccine="百白破疫苗（DTaP）" data-dose-number="2">
+                                            </div>
+                                        </td>
+                                        <td>2/5</td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <div class="input-container">
+                                                <input type="text" class="date-input weui-input" 
+                                                       data-vaccine="百白破疫苗（DTaP）" 
+                                                       data-dose="3" 
+                                                       placeholder="请选择接种日期">
+                                                <div class="calendar-icon"></div>
+                                                <div class="clear-icon"></div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-name">
+                                                <input type="text" class="text-input" placeholder="疫苗名称" data-vaccine="百白破疫苗（DTaP）" data-dose-number="3">
+                                            </div>
+                                        </td>
+                                        <td>3/5</td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <div class="input-container">
+                                                <input type="text" class="date-input weui-input" 
+                                                       data-vaccine="百白破疫苗（DTaP）" 
+                                                       data-dose="4" 
+                                                       placeholder="请选择接种日期">
+                                                <div class="calendar-icon"></div>
+                                                <div class="clear-icon"></div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-name">
+                                                <input type="text" class="text-input" placeholder="疫苗名称" data-vaccine="百白破疫苗（DTaP）" data-dose-number="4">
+                                            </div>
+                                        </td>
+                                        <td>4/5</td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <div class="input-container">
+                                                <input type="text" class="date-input weui-input" 
+                                                       data-vaccine="百白破疫苗（DTaP）" 
+                                                       data-dose="5" 
+                                                       placeholder="请选择接种日期">
+                                                <div class="calendar-icon"></div>
+                                                <div class="clear-icon"></div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-name">
+                                                <input type="text" class="text-input" placeholder="疫苗名称" data-vaccine="百白破疫苗（DTaP）" data-dose-number="5">
+                                            </div>
+                                        </td>
+                                        <td>5/5</td>
+                                    </tr>
+                                    <tr>
+                                        <td rowspan="2">麻腮风疫苗（MMR）</td>
+                                        <td>
+                                            <div class="input-container">
+                                                <input type="text" class="date-input weui-input" 
+                                                       data-vaccine="麻腮风疫苗（MMR）" 
+                                                       data-dose="1" 
+                                                       placeholder="请选择接种日期">
+                                                <div class="calendar-icon"></div>
+                                                <div class="clear-icon"></div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-name">
+                                                <input type="text" class="text-input" placeholder="疫苗名称" data-vaccine="麻腮风疫苗（MMR）" data-dose-number="1">
+                                            </div>
+                                        </td>
+                                        <td>1/2</td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <div class="input-container">
+                                                <input type="text" class="date-input weui-input" 
+                                                       data-vaccine="麻腮风疫苗（MMR）" 
+                                                       data-dose="2" 
+                                                       placeholder="请选择接种日期">
+                                                <div class="calendar-icon"></div>
+                                                <div class="clear-icon"></div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-name">
+                                                <input type="text" class="text-input" placeholder="疫苗名称" data-vaccine="麻腮风疫苗（MMR）" data-dose-number="2">
+                                            </div>
+                                        </td>
+                                        <td>2/2</td>
+                                    </tr>
+                                    <tr>
+                                        <td>麻腮疫苗（MMR）</td>
+                                        <td>
+                                            <div class="input-container">
+                                                <input type="text" class="date-input weui-input" 
+                                                       data-vaccine="麻腮疫苗（MMR）" 
+                                                       data-dose="1" 
+                                                       placeholder="请选择接种日期">
+                                                <div class="calendar-icon"></div>
+                                                <div class="clear-icon"></div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-name">
+                                                <input type="text" class="text-input" placeholder="疫苗名称" data-vaccine="麻腮疫苗（MMR）" data-dose-number="1">
+                                            </div>
+                                        </td>
+                                        <td>1/1</td>
+                                    </tr>
+                                    <tr>
+                                        <td>麻风疫苗</td>
+                                        <td>
+                                            <div class="input-container">
+                                                <input type="text" class="date-input weui-input" 
+                                                       data-vaccine="麻风疫苗" 
+                                                       data-dose="1" 
+                                                       placeholder="请选择接种日期">
+                                                <div class="calendar-icon"></div>
+                                                <div class="clear-icon"></div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-name">
+                                                <input type="text" class="text-input" placeholder="疫苗名称" data-vaccine="麻风疫苗" data-dose-number="1">
+                                            </div>
+                                        </td>
+                                        <td>1/1</td>
+                                    </tr>
+                                    <tr>
+                                        <td rowspan="2">麻疹疫苗</td>
+                                        <td>
+                                            <div class="input-container">
+                                                <input type="text" class="date-input weui-input" 
+                                                       data-vaccine="麻疹疫苗" 
+                                                       data-dose="1" 
+                                                       placeholder="请选择接种日期">
+                                                <div class="calendar-icon"></div>
+                                                <div class="clear-icon"></div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-name">
+                                                <input type="text" class="text-input" placeholder="疫苗名称" data-vaccine="麻疹疫苗" data-dose-number="1">
+                                            </div>
+                                        </td>
+                                        <td>1/2</td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <div class="input-container">
+                                                <input type="text" class="date-input weui-input" 
+                                                       data-vaccine="麻疹疫苗" 
+                                                       data-dose="2" 
+                                                       placeholder="请选择接种日期">
+                                                <div class="calendar-icon"></div>
+                                                <div class="clear-icon"></div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-name">
+                                                <input type="text" class="text-input" placeholder="疫苗名称" data-vaccine="麻疹疫苗" data-dose-number="2">
+                                            </div>
+                                        </td>
+                                        <td>2/2</td>
+                                    </tr>
+                                    <tr>
+                                        <td>卡介苗（BCG）结核（TB）</td>
+                                        <td>
+                                            <div class="input-container">
+                                                <input type="text" class="date-input weui-input" 
+                                                       data-vaccine="卡介苗（BCG）结核（TB）" 
+                                                       data-dose="1" 
+                                                       placeholder="请选择接种日期">
+                                                <div class="calendar-icon"></div>
+                                                <div class="clear-icon"></div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-name">
+                                                <input type="text" class="text-input" placeholder="疫苗名称" data-vaccine="卡介苗（BCG）结核（TB）" data-dose-number="1">
+                                            </div>
+                                        </td>
+                                        <td>1/1</td>
+                                    </tr>
+                                    <tr>
+                                        <td rowspan="3">乙肝疫苗（HepB）</td>
+                                        <td>
+                                            <div class="input-container">
+                                                <input type="text" class="date-input weui-input" 
+                                                       data-vaccine="乙肝疫苗（HepB）" 
+                                                       data-dose="1" 
+                                                       placeholder="请选择接种日期">
+                                                <div class="calendar-icon"></div>
+                                                <div class="clear-icon"></div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-name">
+                                                <input type="text" class="text-input" placeholder="疫苗名称" data-vaccine="乙肝疫苗（HepB）" data-dose-number="1">
+                                            </div>
+                                        </td>
+                                        <td>1/3</td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <div class="input-container">
+                                                <input type="text" class="date-input weui-input" 
+                                                       data-vaccine="乙肝疫苗（HepB）" 
+                                                       data-dose="2" 
+                                                       placeholder="请选择接种日期">
+                                                <div class="calendar-icon"></div>
+                                                <div class="clear-icon"></div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-name">
+                                                <input type="text" class="text-input" placeholder="疫苗名称" data-vaccine="乙肝疫苗（HepB）" data-dose-number="2">
+                                            </div>
+                                        </td>
+                                        <td>2/3</td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <div class="input-container">
+                                                <input type="text" class="date-input weui-input" 
+                                                       data-vaccine="乙肝疫苗（HepB）" 
+                                                       data-dose="3" 
+                                                       placeholder="请选择接种日期">
+                                                <div class="calendar-icon"></div>
+                                                <div class="clear-icon"></div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-name">
+                                                <input type="text" class="text-input" placeholder="疫苗名称" data-vaccine="乙肝疫苗（HepB）" data-dose-number="3">
+                                            </div>
+                                        </td>
+                                        <td>3/3</td>
+                                    </tr>
+                                    <tr>
+                                        <td rowspan="5">脊髓灰质炎疫苗（脊灰疫苗，OPV/IPV）</td>
+                                        <td>
+                                            <div class="input-container">
+                                                <input type="text" class="date-input weui-input" 
+                                                       data-vaccine="脊髓灰质炎疫苗（脊灰疫苗，OPV/IPV）" 
+                                                       data-dose="1" 
+                                                       placeholder="请选择接种日期">
+                                                <div class="calendar-icon"></div>
+                                                <div class="clear-icon"></div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-name">
+                                                <input type="text" class="text-input" placeholder="疫苗名称" data-vaccine="脊髓灰质炎疫苗（脊灰疫苗，OPV/IPV）" data-dose-number="1">
+                                            </div>
+                                        </td>
+                                        <td>1/5</td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <div class="input-container">
+                                                <input type="text" class="date-input weui-input" 
+                                                       data-vaccine="脊髓灰质炎疫苗（脊灰疫苗，OPV/IPV）" 
+                                                       data-dose="2" 
+                                                       placeholder="请选择接种日期">
+                                                <div class="calendar-icon"></div>
+                                                <div class="clear-icon"></div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-name">
+                                                <input type="text" class="text-input" placeholder="疫苗名称" data-vaccine="脊髓灰质炎疫苗（脊灰疫苗，OPV/IPV）" data-dose-number="2">
+                                            </div>
+                                        </td>
+                                        <td>2/5</td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <div class="input-container">
+                                                <input type="text" class="date-input weui-input" 
+                                                       data-vaccine="脊髓灰质炎疫苗（脊灰疫苗，OPV/IPV）" 
+                                                       data-dose="3" 
+                                                       placeholder="请选择接种日期">
+                                                <div class="calendar-icon"></div>
+                                                <div class="clear-icon"></div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-name">
+                                                <input type="text" class="text-input" placeholder="疫苗名称" data-vaccine="脊髓灰质炎疫苗（脊灰疫苗，OPV/IPV）" data-dose-number="3">
+                                            </div>
+                                        </td>
+                                        <td>3/5</td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <div class="input-container">
+                                                <input type="text" class="date-input weui-input" 
+                                                       data-vaccine="脊髓灰质炎疫苗（脊灰疫苗，OPV/IPV）" 
+                                                       data-dose="4" 
+                                                       placeholder="请选择接种日期">
+                                                <div class="calendar-icon"></div>
+                                                <div class="clear-icon"></div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-name">
+                                                <input type="text" class="text-input" placeholder="疫苗名称" data-vaccine="脊髓灰质炎疫苗（脊灰疫苗，OPV/IPV）" data-dose-number="4">
+                                            </div>
+                                        </td>
+                                        <td>4/5</td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <div class="input-container">
+                                                <input type="text" class="date-input weui-input" 
+                                                       data-vaccine="脊髓灰质炎疫苗（脊灰疫苗，OPV/IPV）" 
+                                                       data-dose="5" 
+                                                       placeholder="请选择接种日期">
+                                                <div class="calendar-icon"></div>
+                                                <div class="clear-icon"></div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-name">
+                                                <input type="text" class="text-input" placeholder="疫苗名称" data-vaccine="脊髓灰质炎疫苗（脊灰疫苗，OPV/IPV）" data-dose-number="5">
+                                            </div>
+                                        </td>
+                                        <td>5/5</td>
+                                    </tr>
+                                    <tr>
+                                        <td>白破疫苗（DT）</td>
+                                        <td>
+                                            <div class="input-container">
+                                                <input type="text" class="date-input weui-input" 
+                                                       data-vaccine="白破疫苗（DT）" 
+                                                       data-dose="1" 
+                                                       placeholder="请选择接种日期">
+                                                <div class="calendar-icon"></div>
+                                                <div class="clear-icon"></div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-name">
+                                                <input type="text" class="text-input" placeholder="疫苗名称" data-vaccine="白破疫苗（DT）" data-dose-number="1">
+                                            </div>
+                                        </td>
+                                        <td>1/1</td>
+                                    </tr>
+                                    <tr>
+                                        <td rowspan="4">B型流感嗜血杆菌</td>
+                                        <td>
+                                            <div class="input-container">
+                                                <input type="text" class="date-input weui-input" 
+                                                       data-vaccine="B型流感嗜血杆菌" 
+                                                       data-dose="1" 
+                                                       placeholder="请选择接种日期">
+                                                <div class="calendar-icon"></div>
+                                                <div class="clear-icon"></div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-name">
+                                                <input type="text" class="text-input" placeholder="疫苗名称" data-vaccine="B型流感嗜血杆菌" data-dose-number="1">
+                                            </div>
+                                        </td>
+                                        <td>1/4</td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <div class="input-container">
+                                                <input type="text" class="date-input weui-input" 
+                                                       data-vaccine="B型流感嗜血杆菌" 
+                                                       data-dose="2" 
+                                                       placeholder="请选择接种日期">
+                                                <div class="calendar-icon"></div>
+                                                <div class="clear-icon"></div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-name">
+                                                <input type="text" class="text-input" placeholder="疫苗名称" data-vaccine="B型流感嗜血杆菌" data-dose-number="2">
+                                            </div>
+                                        </td>
+                                        <td>2/4</td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <div class="input-container">
+                                                <input type="text" class="date-input weui-input" 
+                                                       data-vaccine="B型流感嗜血杆菌" 
+                                                       data-dose="3" 
+                                                       placeholder="请选择接种日期">
+                                                <div class="calendar-icon"></div>
+                                                <div class="clear-icon"></div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-name">
+                                                <input type="text" class="text-input" placeholder="疫苗名称" data-vaccine="B型流感嗜血杆菌" data-dose-number="3">
+                                            </div>
+                                        </td>
+                                        <td>3/4</td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <div class="input-container">
+                                                <input type="text" class="date-input weui-input" 
+                                                       data-vaccine="B型流感嗜血杆菌" 
+                                                       data-dose="4" 
+                                                       placeholder="请选择接种日期">
+                                                <div class="calendar-icon"></div>
+                                                <div class="clear-icon"></div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-name">
+                                                <input type="text" class="text-input" placeholder="疫苗名称" data-vaccine="B型流感嗜血杆菌" data-dose-number="4">
+                                            </div>
+                                        </td>
+                                        <td>4/4</td>
+                                    </tr>
+                                    <tr>
+                                        <td rowspan="3">肺炎</td>
+                                        <td>
+                                            <div class="input-container">
+                                                <input type="text" class="date-input weui-input" 
+                                                       data-vaccine="肺炎" 
+                                                       data-dose="1" 
+                                                       placeholder="请选择接种日期">
+                                                <div class="calendar-icon"></div>
+                                                <div class="clear-icon"></div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-name">
+                                                <input type="text" class="text-input" placeholder="疫苗名称" data-vaccine="肺炎" data-dose-number="1">
+                                            </div>
+                                        </td>
+                                        <td>1/3</td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <div class="input-container">
+                                                <input type="text" class="date-input weui-input" 
+                                                       data-vaccine="肺炎" 
+                                                       data-dose="2" 
+                                                       placeholder="请选择接种日期">
+                                                <div class="calendar-icon"></div>
+                                                <div class="clear-icon"></div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-name">
+                                                <input type="text" class="text-input" placeholder="疫苗名称" data-vaccine="肺炎" data-dose-number="2">
+                                            </div>
+                                        </td>
+                                        <td>2/3</td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <div class="input-container">
+                                                <input type="text" class="date-input weui-input" 
+                                                       data-vaccine="肺炎" 
+                                                       data-dose="3" 
+                                                       placeholder="请选择接种日期">
+                                                <div class="calendar-icon"></div>
+                                                <div class="clear-icon"></div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-name">
+                                                <input type="text" class="text-input" placeholder="疫苗名称" data-vaccine="肺炎" data-dose-number="3">
+                                            </div>
+                                        </td>
+                                        <td>3/3</td>
+                                    </tr>
+                                    <tr>
+                                        <td rowspan="2">水痘疫苗（VZV）</td>
+                                        <td>
+                                            <div class="input-container">
+                                                <input type="text" class="date-input weui-input" 
+                                                       data-vaccine="水痘疫苗（VZV）" 
+                                                       data-dose="1" 
+                                                       placeholder="请选择接种日期">
+                                                <div class="calendar-icon"></div>
+                                                <div class="clear-icon"></div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-name">
+                                                <input type="text" class="text-input" placeholder="疫苗名称" data-vaccine="水痘疫苗（VZV）" data-dose-number="1">
+                                            </div>
+                                        </td>
+                                        <td>1/2</td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <div class="input-container">
+                                                <input type="text" class="date-input weui-input" 
+                                                       data-vaccine="水痘疫苗（VZV）" 
+                                                       data-dose="2" 
+                                                       placeholder="请选择接种日期">
+                                                <div class="calendar-icon"></div>
+                                                <div class="clear-icon"></div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-name">
+                                                <input type="text" class="text-input" placeholder="疫苗名称" data-vaccine="水痘疫苗（VZV）" data-dose-number="2">
+                                            </div>
+                                        </td>
+                                        <td>2/2</td>
+                                    </tr>
+                                    <tr>
+                                        <td rowspan="4">流感疫苗</td>
+                                        <td>
+                                            <div class="input-container">
+                                                <input type="text" class="date-input weui-input" 
+                                                       data-vaccine="流感疫苗" 
+                                                       data-dose="1" 
+                                                       placeholder="请选择接种日期">
+                                                <div class="calendar-icon"></div>
+                                                <div class="clear-icon"></div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-name">
+                                                <input type="text" class="text-input" placeholder="疫苗名称" data-vaccine="流感疫苗" data-dose-number="1">
+                                            </div>
+                                        </td>
+                                        <td>1/4</td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <div class="input-container">
+                                                <input type="text" class="date-input weui-input" 
+                                                       data-vaccine="流感疫苗" 
+                                                       data-dose="2" 
+                                                       placeholder="请选择接种日期">
+                                                <div class="calendar-icon"></div>
+                                                <div class="clear-icon"></div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-name">
+                                                <input type="text" class="text-input" placeholder="疫苗名称" data-vaccine="流感疫苗" data-dose-number="2">
+                                            </div>
+                                        </td>
+                                        <td>2/4</td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <div class="input-container">
+                                                <input type="text" class="date-input weui-input" 
+                                                       data-vaccine="流感疫苗" 
+                                                       data-dose="3" 
+                                                       placeholder="请选择接种日期">
+                                                <div class="calendar-icon"></div>
+                                                <div class="clear-icon"></div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-name">
+                                                <input type="text" class="text-input" placeholder="疫苗名称" data-vaccine="流感疫苗" data-dose-number="3">
+                                            </div>
+                                        </td>
+                                        <td>3/4</td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <div class="input-container">
+                                                <input type="text" class="date-input weui-input" 
+                                                       data-vaccine="流感疫苗" 
+                                                       data-dose="4" 
+                                                       placeholder="请选择接种日期">
+                                                <div class="calendar-icon"></div>
+                                                <div class="clear-icon"></div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-name">
+                                                <input type="text" class="text-input" placeholder="疫苗名称" data-vaccine="流感疫苗" data-dose-number="4">
+                                            </div>
+                                        </td>
+                                        <td>4/4</td>
+                                    </tr>
+                                    <tr>
+                                        <td>甲肝疫苗（HepA）</td>
+                                        <td>
+                                            <div class="input-container">
+                                                <input type="text" class="date-input weui-input" 
+                                                       data-vaccine="甲肝疫苗（HepA）" 
+                                                       data-dose="1" 
+                                                       placeholder="请选择接种日期">
+                                                <div class="calendar-icon"></div>
+                                                <div class="clear-icon"></div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-name">
+                                                <input type="text" class="text-input" placeholder="疫苗名称" data-vaccine="甲肝疫苗（HepA）" data-dose-number="1">
+                                            </div>
+                                        </td>
+                                        <td>1/1</td>
+                                    </tr>
+                                    <tr>
+                                        <td>甲肝灭活/甲肝减毒</td>
+                                        <td>
+                                            <div class="input-container">
+                                                <input type="text" class="date-input weui-input" 
+                                                       data-vaccine="甲肝灭活/甲肝减毒" 
+                                                       data-dose="1" 
+                                                       placeholder="请选择接种日期">
+                                                <div class="calendar-icon"></div>
+                                                <div class="clear-icon"></div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-name">
+                                                <input type="text" class="text-input" placeholder="疫苗名称" data-vaccine="甲肝灭活/甲肝减毒" data-dose-number="1">
+                                            </div>
+                                        </td>
+                                        <td>1/1</td>
+                                    </tr>
+                                    <tr>
+                                        <td>轮状病毒疫苗</td>
+                                        <td>
+                                            <div class="input-container">
+                                                <input type="text" class="date-input weui-input" 
+                                                       data-vaccine="轮状病毒疫苗" 
+                                                       data-dose="1" 
+                                                       placeholder="请选择接种日期">
+                                                <div class="calendar-icon"></div>
+                                                <div class="clear-icon"></div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-name">
+                                                <input type="text" class="text-input" placeholder="疫苗名称" data-vaccine="轮状病毒疫苗" data-dose-number="1">
+                                            </div>
+                                        </td>
+                                        <td>1/1</td>
+                                    </tr>
+                                    <tr>
+                                        <td rowspan="2">乙脑疫苗（JEV）</td>
+                                        <td>
+                                            <div class="input-container">
+                                                <input type="text" class="date-input weui-input" 
+                                                       data-vaccine="乙脑疫苗（JEV）" 
+                                                       data-dose="1" 
+                                                       placeholder="请选择接种日期">
+                                                <div class="calendar-icon"></div>
+                                                <div class="clear-icon"></div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-name">
+                                                <input type="text" class="text-input" placeholder="疫苗名称" data-vaccine="乙脑疫苗（JEV）" data-dose-number="1">
+                                            </div>
+                                        </td>
+                                        <td>1/2</td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <div class="input-container">
+                                                <input type="text" class="date-input weui-input" 
+                                                       data-vaccine="乙脑疫苗（JEV）" 
+                                                       data-dose="2" 
+                                                       placeholder="请选择接种日期">
+                                                <div class="calendar-icon"></div>
+                                                <div class="clear-icon"></div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-name">
+                                                <input type="text" class="text-input" placeholder="疫苗名称" data-vaccine="乙脑疫苗（JEV）" data-dose-number="2">
+                                            </div>
+                                        </td>
+                                        <td>2/2</td>
+                                    </tr>
+                                    <tr>
+                                        <td rowspan="2">A群流脑多糖疫苗（MPSV-A）</td>
+                                        <td>
+                                            <div class="input-container">
+                                                <input type="text" class="date-input weui-input" 
+                                                       data-vaccine="A群流脑多糖疫苗（MPSV-A）" 
+                                                       data-dose="1" 
+                                                       placeholder="请选择接种日期">
+                                                <div class="calendar-icon"></div>
+                                                <div class="clear-icon"></div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-name">
+                                                <input type="text" class="text-input" placeholder="疫苗名称" data-vaccine="A群流脑多糖疫苗（MPSV-A）" data-dose-number="1">
+                                            </div>
+                                        </td>
+                                        <td>1/2</td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <div class="input-container">
+                                                <input type="text" class="date-input weui-input" 
+                                                       data-vaccine="A群流脑多糖疫苗（MPSV-A）" 
+                                                       data-dose="2" 
+                                                       placeholder="请选择接种日期">
+                                                <div class="calendar-icon"></div>
+                                                <div class="clear-icon"></div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-name">
+                                                <input type="text" class="text-input" placeholder="疫苗名称" data-vaccine="A群流脑多糖疫苗（MPSV-A）" data-dose-number="2">
+                                            </div>
+                                        </td>
+                                        <td>2/2</td>
+                                    </tr>
+                                    <tr>
+                                        <td rowspan="2">A+C群流脑多糖疫苗（MPSV-A+C）</td>
+                                        <td>
+                                            <div class="input-container">
+                                                <input type="text" class="date-input weui-input" 
+                                                       data-vaccine="A+C群流脑多糖疫苗（MPSV-A+C）" 
+                                                       data-dose="1" 
+                                                       placeholder="请选择接种日期">
+                                                <div class="calendar-icon"></div>
+                                                <div class="clear-icon"></div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-name">
+                                                <input type="text" class="text-input" placeholder="疫苗名称" data-vaccine="A+C群流脑多糖疫苗（MPSV-A+C）" data-dose-number="1">
+                                            </div>
+                                        </td>
+                                        <td>1/2</td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <div class="input-container">
+                                                <input type="text" class="date-input weui-input" 
+                                                       data-vaccine="A+C群流脑多糖疫苗（MPSV-A+C）" 
+                                                       data-dose="2" 
+                                                       placeholder="请选择接种日期">
+                                                <div class="calendar-icon"></div>
+                                                <div class="clear-icon"></div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-name">
+                                                <input type="text" class="text-input" placeholder="疫苗名称" data-vaccine="A+C群流脑多糖疫苗（MPSV-A+C）" data-dose-number="2">
+                                            </div>
+                                        </td>
+                                        <td>2/2</td>
+                                    </tr>
+                                    <tr>
+                                        <td rowspan="2">HPV</td>
+                                        <td>
+                                            <div class="input-container">
+                                                <input type="text" class="date-input weui-input" 
+                                                       data-vaccine="HPV" 
+                                                       data-dose="1" 
+                                                       placeholder="请选择接种日期">
+                                                <div class="calendar-icon"></div>
+                                                <div class="clear-icon"></div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-name">
+                                                <input type="text" class="text-input" placeholder="疫苗名称" data-vaccine="HPV" data-dose-number="1">
+                                            </div>
+                                        </td>
+                                        <td>1/2</td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <div class="input-container">
+                                                <input type="text" class="date-input weui-input" 
+                                                       data-vaccine="HPV" 
+                                                       data-dose="2" 
+                                                       placeholder="请选择接种日期">
+                                                <div class="calendar-icon"></div>
+                                                <div class="clear-icon"></div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-name">
+                                                <input type="text" class="text-input" placeholder="疫苗名称" data-vaccine="HPV" data-dose-number="2">
+                                            </div>
+                                        </td>
+                                        <td>2/2</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="button-group">
+                            <a href="javascript:;" class="weui-btn weui-btn_primary" id="confirmStep">确认信息</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const fileInput = document.getElementById('fileInput');
+            const confirmStepBtn = document.getElementById('confirmStep');
+            const step2 = document.getElementById('step2');
+            const pdfViewArea = document.getElementById('pdfViewer');
+            let pdfViewer = null;
+
+            // Function to trigger file input
+            function triggerFileInput() {
+                fileInput.click();
+            }
+
+            // Add click handler to PDF view area
+            pdfViewArea.addEventListener('click', function(e) {
+                if (!pdfViewArea.classList.contains('has-pdf')) {
+                    triggerFileInput();
+                }
+            });
+
+            // Add click handler to reupload link
+            document.querySelector('.reupload-link').addEventListener('click', function(e) {
+                e.preventDefault();
+                triggerFileInput();
+            });
+
+            fileInput.addEventListener('change', async function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    if (file.type !== 'application/pdf') {
+                        weui.toast('请上传PDF文件', {
+                            duration: 2000,
+                            className: 'custom-toast'
+                        });
+                        return;
+                    }
+
+                    const reader = new FileReader();
+                    reader.onload = async function(event) {
+                        try {
+                            pdfViewArea.innerHTML = '';
+                            pdfViewer = new PDFViewer(pdfViewArea);
+                            const success = await pdfViewer.loadPDF(event.target.result);
+                            if (success) {
+                                document.getElementById('mainPage').classList.add('full-screen');
+                                step2.classList.remove('hidden');
+                                pdfViewArea.classList.add('has-pdf');
+                                document.querySelector('.reupload-link').classList.add('visible');
+                            }
+                        } catch (error) {
+                            console.error('Error loading PDF:', error);
+                            weui.alert('无法加载PDF文件');
+                            pdfViewer = null;
+                            pdfViewArea.classList.remove('has-pdf');
+                            document.querySelector('.reupload-link').classList.remove('visible');
+                        }
+                    };
+                    reader.readAsArrayBuffer(file);
+                }
+            });
+
+            document.querySelector('.reupload-link').addEventListener('click', function() {
+                fileInput.value = '';
+                pdfViewer = null;
+                pdfViewArea.innerHTML = '';
+                pdfViewArea.classList.remove('has-pdf');
+                document.querySelector('.reupload-link').classList.remove('visible');
+            });
+
+            // Initialize the JSON structure
+            let currentVaccinationRecord = {
+                personalInfo: {
+                    name: "",
+                    sex: "男",  // Default to male
+                    passportID: "",
+                    birthDate: "",
+                    birthCountry: ""
+                },
+                vaccinationRecords: [
+                    {
+                        vaccineName: "百白破疫苗（DTaP）",
+                        doses: Array(5).fill(null).map((_, i) => ({
+                            doseNumber: i + 1,
+                            vaccinationDate: "",
+                            vaccinationBranding: ""
+                        }))
+                    },
+                    {
+                        vaccineName: "麻腮风疫苗（MMR）",
+                        doses: Array(2).fill(null).map((_, i) => ({
+                            doseNumber: i + 1,
+                            vaccinationDate: "",
+                            vaccinationBranding: ""
+                        }))
+                    },
+                    {
+                        vaccineName: "麻腮疫苗（MMR）",
+                        doses: [{
+                            doseNumber: 1,
+                            vaccinationDate: "",
+                            vaccinationBranding: ""
+                        }]
+                    },
+                    {
+                        vaccineName: "麻风疫苗",
+                        doses: [{
+                            doseNumber: 1,
+                            vaccinationDate: "",
+                            vaccinationBranding: ""
+                        }]
+                    },
+                    {
+                        vaccineName: "麻疹疫苗",
+                        doses: Array(2).fill(null).map((_, i) => ({
+                            doseNumber: i + 1,
+                            vaccinationDate: "",
+                            vaccinationBranding: ""
+                        }))
+                    },
+                    {
+                        vaccineName: "卡介苗（BCG）结核（TB）",
+                        doses: [{
+                            doseNumber: 1,
+                            vaccinationDate: "",
+                            vaccinationBranding: ""
+                        }]
+                    },
+                    {
+                        vaccineName: "乙肝疫苗（HepB）",
+                        doses: Array(3).fill(null).map((_, i) => ({
+                            doseNumber: i + 1,
+                            vaccinationDate: "",
+                            vaccinationBranding: ""
+                        }))
+                    },
+                    {
+                        vaccineName: "脊髓灰质炎疫苗（脊灰疫苗，OPV/IPV）",
+                        doses: Array(5).fill(null).map((_, i) => ({
+                            doseNumber: i + 1,
+                            vaccinationDate: "",
+                            vaccinationBranding: ""
+                        }))
+                    },
+                    {
+                        vaccineName: "白破疫苗（DT）",
+                        doses: [{
+                            doseNumber: 1,
+                            vaccinationDate: "",
+                            vaccinationBranding: ""
+                        }]
+                    },
+                    {
+                        vaccineName: "B型流感嗜血杆菌",
+                        doses: Array(4).fill(null).map((_, i) => ({
+                            doseNumber: i + 1,
+                            vaccinationDate: "",
+                            vaccinationBranding: ""
+                        }))
+                    },
+                    {
+                        vaccineName: "肺炎",
+                        doses: Array(3).fill(null).map((_, i) => ({
+                            doseNumber: i + 1,
+                            vaccinationDate: "",
+                            vaccinationBranding: ""
+                        }))
+                    },
+                    {
+                        vaccineName: "水痘疫苗（VZV）",
+                        doses: Array(2).fill(null).map((_, i) => ({
+                            doseNumber: i + 1,
+                            vaccinationDate: "",
+                            vaccinationBranding: ""
+                        }))
+                    },
+                    {
+                        vaccineName: "流感疫苗",
+                        doses: Array(4).fill(null).map((_, i) => ({
+                            doseNumber: i + 1,
+                            vaccinationDate: "",
+                            vaccinationBranding: ""
+                        }))
+                    },
+                    {
+                        vaccineName: "甲肝疫苗（HepA）",
+                        doses: [{
+                            doseNumber: 1,
+                            vaccinationDate: "",
+                            vaccinationBranding: ""
+                        }]
+                    },
+                    {
+                        vaccineName: "甲肝灭活/甲肝减毒",
+                        doses: [{
+                            doseNumber: 1,
+                            vaccinationDate: "",
+                            vaccinationBranding: ""
+                        }]
+                    },
+                    {
+                        vaccineName: "轮状病毒疫苗",
+                        doses: [{
+                            doseNumber: 1,
+                            vaccinationDate: "",
+                            vaccinationBranding: ""
+                        }]
+                    },
+                    {
+                        vaccineName: "乙脑疫苗（JEV）",
+                        doses: Array(2).fill(null).map((_, i) => ({
+                            doseNumber: i + 1,
+                            vaccinationDate: "",
+                            vaccinationBranding: ""
+                        }))
+                    },
+                    {
+                        vaccineName: "A群流脑多糖疫苗（MPSV-A）",
+                        doses: Array(2).fill(null).map((_, i) => ({
+                            doseNumber: i + 1,
+                            vaccinationDate: "",
+                            vaccinationBranding: ""
+                        }))
+                    },
+                    {
+                        vaccineName: "A+C群流脑多糖疫苗（MPSV-A+C）",
+                        doses: Array(2).fill(null).map((_, i) => ({
+                            doseNumber: i + 1,
+                            vaccinationDate: "",
+                            vaccinationBranding: ""
+                        }))
+                    },
+                    {
+                        vaccineName: "HPV",
+                        doses: Array(2).fill(null).map((_, i) => ({
+                            doseNumber: i + 1,
+                            vaccinationDate: "",
+                            vaccinationBranding: ""
+                        }))
+                    }
+                ]
+            };
+
+            // Function to update personal info in the JSON
+            function updatePersonalInfo() {
+                const name = document.getElementById('name').value;
+                const passportID = document.getElementById('passport').value;
+                const birthDate = document.getElementById('birthDate').value;
+                const birthCountry = document.getElementById('birthCountry').value;
+                const sex = document.querySelector('input[name="sex"]:checked').value;
+
+                currentVaccinationRecord.personalInfo = {
+                    name,
+                    sex,
+                    passportID,
+                    birthDate,
+                    birthCountry
+                };
+            }
+
+            // Add event listeners to personal info fields
+            document.getElementById('name').addEventListener('input', updatePersonalInfo);
+            document.getElementById('passport').addEventListener('input', updatePersonalInfo);
+            document.getElementById('birthDate').addEventListener('change', updatePersonalInfo);
+            document.getElementById('birthCountry').addEventListener('input', updatePersonalInfo);
+            document.querySelectorAll('input[name="sex"]').forEach(radio => {
+                radio.addEventListener('change', updatePersonalInfo);
+            });
+
+            // Function to update vaccination dates and branding in the JSON
+            function updateVaccinationDates() {
+                const dateInputs = document.querySelectorAll('.vaccination-table input.date-input');
+                const nameInputs = document.querySelectorAll('.vaccination-table .input-name input');
+
+                dateInputs.forEach(input => {
+                    const vaccine = input.getAttribute('data-vaccine');
+                    const doseNumber = parseInt(input.getAttribute('data-dose'));
+                    const vaccineRecord = currentVaccinationRecord.vaccinationRecords.find(record => record.vaccineName === vaccine);
+                    
+                    if (vaccineRecord) {
+                        const dose = vaccineRecord.doses.find(d => d.doseNumber === doseNumber);
+                        if (dose) {
+                            dose.vaccinationDate = input.value;
+                        }
+                    }
+                });
+
+                // Update vaccination branding from input-name fields
+                nameInputs.forEach(input => {
+                    const vaccine = input.getAttribute('data-vaccine');
+                    const doseNumber = parseInt(input.getAttribute('data-dose-number'));
+                    const vaccineRecord = currentVaccinationRecord.vaccinationRecords.find(record => record.vaccineName === vaccine);
+                    
+                    if (vaccineRecord) {
+                        const dose = vaccineRecord.doses.find(d => d.doseNumber === doseNumber);
+                        if (dose) {
+                            dose.vaccinationBranding = input.value;
+                        }
+                    }
+                });
+            }
+
+            // Add event listeners to all date inputs and name inputs
+            document.querySelectorAll('.vaccination-table input.date-input, .vaccination-table .input-name input').forEach(input => {
+                let updateTimeout;
+                ['change', 'input', 'paste'].forEach(eventType => {
+                    input.addEventListener(eventType, () => {
+                        clearTimeout(updateTimeout);
+                        updateTimeout = setTimeout(updateVaccinationDates, 300);
+                    });
+                });
+            });
+
+            // Add event listener to the confirm button to log the final data
+            if (confirmStepBtn) {
+                confirmStepBtn.addEventListener('click', function() {
+                    updateVaccinationDates();
+                    
+                    // Log the final data
+                    console.log('Current Vaccination Record:', JSON.stringify(currentVaccinationRecord, null, 2));
+                    
+                    // Encode the JSON data for URL
+                    const jsonData = encodeURIComponent(JSON.stringify(currentVaccinationRecord));
+                    
+                    // Open pdf-generate.html in a new window with the data
+                    window.open(`pdfgen.html?data=${jsonData}`, '_blank');
+                });
+            }
+
+            function initializeDatePicker() {
+                const dateInputs = document.querySelectorAll('.date-input, .weui-input');
+                const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+                dateInputs.forEach(input => {
+                    const container = input.closest('.input-container');
+                    if (!container) return; // Skip if no container found
+
+                    // Add error message element
+                    const errorMessage = document.createElement('div');
+                    errorMessage.className = 'error-message';
+                    errorMessage.textContent = '请输入有效的日期（如：2024-09-01 或 20240901）';
+                    container.parentElement.appendChild(errorMessage);
+
+                    // Add calendar and clear icons if they don't exist
+                    if (!container.querySelector('.calendar-icon')) {
+                        const calendarIcon = document.createElement('div');
+                        calendarIcon.className = 'calendar-icon';
+                        container.appendChild(calendarIcon);
+                    }
+
+                    if (!container.querySelector('.clear-icon')) {
+                        const clearIcon = document.createElement('div');
+                        clearIcon.className = 'clear-icon';
+                        container.appendChild(clearIcon);
+                    }
+
+                    const clearIcon = container.querySelector('.clear-icon');
+                    const calendarIcon = container.querySelector('.calendar-icon');
+
+                    // Show/hide error functions
+                    function showError() {
+                        input.classList.add('error');
+                        errorMessage.classList.add('show');
+                    }
+
+                    function hideError() {
+                        input.classList.remove('error');
+                        errorMessage.classList.remove('show');
+                    }
+
+                    if (isMobile) {
+                        // Mobile: Use WeUI date picker
+                        container.style.cursor = 'pointer';
+                        
+                        container.addEventListener('click', function(e) {
+                            if (e.target === clearIcon) {
+                                e.stopPropagation();
+                                input.value = '';
+                                hideError();
+                                return;
+                            }
+
+                            e.preventDefault();
+                            showDatePicker(input);
+                        });
+
+                        input.addEventListener('focus', function(e) {
+                            e.preventDefault();
+                            input.blur();
+                        });
+                    } else {
+                        // Desktop: Direct input with validation
+                        input.removeAttribute('readonly');
+                        
+                        calendarIcon.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            showDatePicker(input);
+                        });
+
+                        input.addEventListener('input', function(e) {
+                            const value = e.target.value.replace(/[^\d-]/g, '');
+                            input.value = value;
+                            hideError();
+                        });
+
+                        input.addEventListener('keydown', function(e) {
+                            if (e.key === 'Enter') {
+                                e.preventDefault();
+                                const allInputs = Array.from(document.querySelectorAll('.date-input, .weui-input'));
+                                const currentIndex = allInputs.indexOf(this);
+                                const nextInput = allInputs[currentIndex + 1];
+                                if (nextInput) {
+                                    nextInput.focus();
+                                }
+                            }
+                        });
+
+                        input.addEventListener('blur', function(e) {
+                            const value = e.target.value;
+                            if (value) {
+                                const formattedDate = validateDate(value);
+                                if (formattedDate) {
+                                    input.value = formattedDate;
+                                    hideError();
+                                } else {
+                                    showError();
+                                }
+                            } else {
+                                hideError();
+                            }
+                        });
+
+                        if (clearIcon) {
+                            clearIcon.addEventListener('click', function(e) {
+                                e.stopPropagation();
+                                input.value = '';
+                                hideError();
+                            });
+                        }
+                    }
+                });
+            }
+
+            function showDatePicker(input) {
+                const currentDate = input.value ? new Date(input.value) : new Date();
+
+                weui.datePicker({
+                    start: 1900,
+                    end: new Date().getFullYear(),
+                    defaultValue: [
+                        currentDate.getFullYear(),
+                        currentDate.getMonth() + 1,
+                        currentDate.getDate()
+                    ],
+                    onChange: function(result) {
+                        // Optional: handle onChange
+                    },
+                    onConfirm: function(result) {
+                        const year = result[0];
+                        const month = String(result[1]).padStart(2, '0');
+                        const day = String(result[2]).padStart(2, '0');
+                        const dateStr = `${year}-${month}-${day}`;
+                        input.value = dateStr;
+
+                        // Trigger change event
+                        const event = new Event('change');
+                        input.dispatchEvent(event);
+                    },
+                    title: '选择日期'
+                });
+            }
+
+            function validateDate(value) {
+                if (!value) return null;
+
+                // Clean the input value
+                const cleanValue = value.replace(/[^\d-]/g, '');
+
+                // Handle YYYY-M-D or YYYY-MM-DD format
+                if (cleanValue.includes('-')) {
+                    const parts = cleanValue.split('-');
+                    if (parts.length === 3) {
+                        const year = parseInt(parts[0]);
+                        const month = parseInt(parts[1]);
+                        const day = parseInt(parts[2]);
+
+                        if (isValidDate(year, month, day)) {
+                            return formatDateComponents(year, month, day);
+                        }
+                    }
+                    return null;
+                }
+
+                // Handle continuous number formats (YYYYMMDD or YYYYMD)
+                if (/^\d{6,8}$/.test(cleanValue)) {
+                    let year, month, day;
+                    
+                    year = parseInt(cleanValue.substring(0, 4));
+                    
+                    if (cleanValue.length === 8) {
+                        // YYYYMMDD format
+                        month = parseInt(cleanValue.substring(4, 6));
+                        day = parseInt(cleanValue.substring(6, 8));
+                    } else if (cleanValue.length === 7) {
+                        // YYYYMDD format
+                        month = parseInt(cleanValue.substring(4, 5));
+                        day = parseInt(cleanValue.substring(5, 7));
+                    } else if (cleanValue.length === 6) {
+                        // YYYYMD format
+                        month = parseInt(cleanValue.substring(4, 5));
+                        day = parseInt(cleanValue.substring(5, 6));
+                    }
+
+                    if (isValidDate(year, month, day)) {
+                        return formatDateComponents(year, month, day);
+                    }
+                }
+
+                return null;
+            }
+
+            function isValidDate(year, month, day) {
+                if (year >= 1900 && year <= new Date().getFullYear() &&
+                    month >= 1 && month <= 12 &&
+                    day >= 1 && day <= 31) {
+                    const date = new Date(year, month - 1, day);
+                    return !isNaN(date.getTime()) &&
+                           date.getFullYear() === year &&
+                           date.getMonth() === month - 1 &&
+                           date.getDate() === day;
+                }
+                return false;
+            }
+
+            function formatDateComponents(year, month, day) {
+                return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            }
+
+            // Initialize on page load
+            initializeDatePicker();
+        });
+    </script>
+</body>
+</html>
