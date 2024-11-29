@@ -146,8 +146,8 @@
         }
 
         document.addEventListener('DOMContentLoaded', function() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const jsonData = urlParams.get('data');
+            // Get data from localStorage
+            const jsonData = localStorage.getItem('vaccinationData');
             
             if (!jsonData) {
                 alert('No immunization record data found');
@@ -155,7 +155,7 @@
             }
 
             try {
-                const data = JSON.parse(decodeURIComponent(jsonData));
+                const data = JSON.parse(jsonData);
                 
                 // Display personal information
                 const personalInfoDiv = document.getElementById('personalInfo');
@@ -224,6 +224,9 @@
                 
                 // Display the table
                 document.getElementById('vaccinationRecords').innerHTML = tableHTML;
+
+                // Clear the data from localStorage after displaying
+                localStorage.removeItem('vaccinationData');
 
             } catch (error) {
                 console.error('Error parsing data:', error);

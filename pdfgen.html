@@ -806,16 +806,14 @@
 
             // Add translation link handler
             document.getElementById('translateLink').addEventListener('click', function() {
-                // Create URL with query parameters
-                const queryParams = new URLSearchParams({
-                    data: encodeURIComponent(JSON.stringify({
-                        personalInfo: pdfVaccinationRecord.personalInfo,
-                        vaccinationRecords: pdfVaccinationRecord.vaccinationRecords
-                    }))
-                });
+                // Store data in localStorage
+                localStorage.setItem('vaccinationData', JSON.stringify({
+                    personalInfo: pdfVaccinationRecord.personalInfo,
+                    vaccinationRecords: pdfVaccinationRecord.vaccinationRecords
+                }));
                 
-                // Open translation.html in a new tab with the data
-                window.open(`translation.html?${queryParams.toString()}`, '_blank');
+                // Open translation.html in a new tab without query parameters
+                window.open('translation.html', '_blank');
             });
         });
     </script>
