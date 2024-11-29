@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Immunization Information Transcription</title>
+    <link rel="stylesheet" href="https://res.wx.qq.com/open/libs/weui/2.4.4/weui.min.css">
+    <style>
+        body {
+            background-color: #fff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 16px;
+        }
+        .title {
+            text-align: center;
+            font-size: 24px;
+            margin: 20px 0;
+            color: #333;
+            font-weight: bold;
+        }
+        .section-title {
+            font-size: 20px;
+            margin: 30px 0 20px;
+            color: #333;
+            font-weight: bold;
+            border-bottom: 2px solid #333;
+            padding-bottom: 8px;
+        }
+        .info-section {
+            margin-bottom: 40px;
+            background-color: #f9f9f9;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        .info-row {
+            display: flex;
+            margin-bottom: 12px;
+            border-bottom: 1px solid #eee;
+            padding: 8px 0;
+            align-items: center;
+        }
+        .info-row:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        .info-label {
+            width: 200px;
+            color: #666;
+            position: relative;
+            padding-right: 24px;
+        }
+        .info-label::after {
+            content: ":";
+            position: absolute;
+            right: 8px;
+            color: #999;
+        }
+        .info-value {
+            flex: 1;
+            color: #333;
+            font-weight: 600;
+            padding-left: 16px;
+        }
+        .vaccine-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        .vaccine-table th,
+        .vaccine-table td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        .vaccine-table th {
+            background-color: #f8f8f8;
+            font-weight: 600;
+        }
+        .vaccine-name {
+            width: 250px;
+        }
+        .vaccine-name-cn {
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px dashed #ddd;
+        }
+        .vaccine-name-en {
+            color: #666;
+        }
+        .dose-date {
+            width: 120px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="title">Immunization Information Transcription</h1>
+        
+        <h2 class="section-title">Personal Information</h2>
+        <div id="personalInfo" class="info-section">
+            <!-- Will be populated by JavaScript -->
+        </div>
+
+        <h2 class="section-title">Immunization Records</h2>
+        <div id="vaccinationRecords">
+            <!-- Will be populated by JavaScript -->
+        </div>
+    </div>
+
+    <script>
+        // Vaccine name translations
+        const vaccineTranslations = {
+            "百白破疫苗（DTaP）": "Diphtheria, Tetanus & Pertussis Vaccine (DTaP)",
+            "麻疹相关疫苗": "Measles Related Vaccine",
+            "卡介苗（BCG）结核（TB）": "Bacillus Calmette–Guérin (BCG)",
+            "乙肝疫苗（HepB）": "Hepatitis B Vaccine (HepB)",
+            "脊髓灰质炎疫苗（脊灰疫苗，OPV/IPV）": "Polio Vaccine (OPV/IPV)",
+            "B型流感嗜血杆菌": "Haemophilus Influenzae Type b (Hib)",
+            "肺炎": "Pneumococcal Vaccine (PCV)",
+            "水痘疫苗（VZV）": "Varicella Vaccine (VZV)",
+            "流感疫苗": "Influenza Vaccine",
+            "HPV": "Human Papillomavirus Vaccine (HPV)",
+            "白破疫苗（DT）": "Diphtheria & Tetanus Vaccine (DT)",
+            "甲肝疫苗（HepA）": "Hepatitis A Vaccine (HepA)",
+            "甲肝灭活/甲肝减毒": "Hepatitis A Vaccine - Inactivated/Live",
+            "轮状病毒疫苗": "Rotavirus Vaccine (RV)",
+            "乙脑疫苗（JEV）": "Japanese Encephalitis Vaccine (JEV)",
+            "A群流脑多糖疫苗（MPSV-A）": "Meningococcal Vaccine Group A (MPSV-A)",
+            "A+C群流脑多糖疫苗（MPSV-A+C）": "Meningococcal Vaccine Group A+C (MPSV-A+C)"
+        };
+
+        // Helper function to translate sex to English
+        function translateSex(sex) {
+            const sexTranslations = {
+                '男': 'Male',
+                '女': 'Female'
+            };
+            return sexTranslations[sex] || sex;
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const jsonData = urlParams.get('data');
+            
+            if (!jsonData) {
+                alert('No immunization record data found');
+                return;
+            }
+
+            try {
+                const data = JSON.parse(decodeURIComponent(jsonData));
+                
+                // Display personal information
+                const personalInfoDiv = document.getElementById('personalInfo');
+                personalInfoDiv.innerHTML = `
+                    <div class="info-row">
+                        <div class="info-label">Name / 姓名</div>
+                        <div class="info-value">${data.personalInfo.name || '-'}</div>
+                    </div>
+                    <div class="info-row">
+                        <div class="info-label">Sex / 性别</div>
+                        <div class="info-value">${translateSex(data.personalInfo.sex) || '-'}</div>
+                    </div>
+                    <div class="info-row">
+                        <div class="info-label">Passport / 护照号码</div>
+                        <div class="info-value">${data.personalInfo.passportID || '-'}</div>
+                    </div>
+                    <div class="info-row">
+                        <div class="info-label">Date of Birth / 出生日期<br><span style="font-size: 0.85em; color: #666;">(DD/MM/YYYY)</span></div>
+                        <div class="info-value">${data.personalInfo.birthDate || '-'}</div>
+                    </div>
+                    <div class="info-row">
+                        <div class="info-label">Country of Birth / 出生国家</div>
+                        <div class="info-value">${data.personalInfo.birthCountry || '-'}</div>
+                    </div>
+                `;
+
+                // Find maximum number of doses across all vaccines
+                const maxDoses = Math.max(...data.vaccinationRecords.map(
+                    record => record.doses.filter(dose => dose.date).length
+                ));
+
+                // Create table header
+                let tableHTML = `
+                    <table class="vaccine-table">
+                        <thead>
+                            <tr>
+                                <th class="vaccine-name">Vaccine Name / 疫苗名称</th>
+                                ${Array.from({length: maxDoses}, (_, i) => 
+                                    `<th class="dose-date">Dose ${i + 1}<br>
+                                    <span style="font-size: 0.85em; color: #666; font-weight: normal;">(DD/MM/YYYY)</span></th>`
+                                ).join('')}
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                // Add table rows
+                data.vaccinationRecords.forEach(record => {
+                    const doses = record.doses.filter(dose => dose.date);
+                    if (doses.length > 0) {
+                        tableHTML += `
+                            <tr>
+                                <td class="vaccine-name">
+                                    <div class="vaccine-name-cn">${record.vaccineName}</div>
+                                    <div class="vaccine-name-en">${vaccineTranslations[record.vaccineName] || ''}</div>
+                                </td>
+                                ${Array.from({length: maxDoses}, (_, i) => 
+                                    `<td class="dose-date">${doses[i]?.date || ''}</td>`
+                                ).join('')}
+                            </tr>
+                        `;
+                    }
+                });
+
+                tableHTML += '</tbody></table>';
+                
+                // Display the table
+                document.getElementById('vaccinationRecords').innerHTML = tableHTML;
+
+            } catch (error) {
+                console.error('Error parsing data:', error);
+                alert('Error parsing immunization data');
+            }
+        });
+    </script>
+</body>
+</html>
