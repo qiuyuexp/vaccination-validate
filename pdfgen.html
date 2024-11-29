@@ -806,14 +806,23 @@
 
             // Add translation link handler
             document.getElementById('translateLink').addEventListener('click', function() {
-                // Store data in localStorage
-                localStorage.setItem('vaccinationData', JSON.stringify({
-                    personalInfo: pdfVaccinationRecord.personalInfo,
-                    vaccinationRecords: pdfVaccinationRecord.vaccinationRecords
-                }));
-                
-                // Open translation.html in a new tab without query parameters
-                window.open('translation.html', '_blank');
+                try {
+                    // Prepare the data
+                    const data = {
+                        personalInfo: pdfVaccinationRecord.personalInfo,
+                        vaccinationRecords: pdfVaccinationRecord.vaccinationRecords
+                    };
+                    
+                    // Convert to Base64
+                    const jsonString = JSON.stringify(data);
+                    const base64Data = btoa(unescape(encodeURIComponent(jsonString)));
+                    
+                    // Open translation.html with the data in the hash
+                    window.open(`translation.html#${base64Data}`, '_blank');
+                } catch (error) {
+                    console.error('Error preparing data:', error);
+                    alert('Error preparing data for translation');
+                }
             });
         });
     </script>

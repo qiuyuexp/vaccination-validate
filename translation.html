@@ -146,16 +146,16 @@
         }
 
         document.addEventListener('DOMContentLoaded', function() {
-            // Get data from localStorage
-            const jsonData = localStorage.getItem('vaccinationData');
-            
-            if (!jsonData) {
-                alert('No immunization record data found');
-                return;
-            }
-
             try {
-                const data = JSON.parse(jsonData);
+                // Get data from URL hash
+                const hash = window.location.hash.substring(1); // Remove the # symbol
+                if (!hash) {
+                    throw new Error('No data found in URL');
+                }
+
+                // Decode base64 data
+                const jsonString = decodeURIComponent(escape(atob(hash)));
+                const data = JSON.parse(jsonString);
                 
                 // Display personal information
                 const personalInfoDiv = document.getElementById('personalInfo');
@@ -225,12 +225,15 @@
                 // Display the table
                 document.getElementById('vaccinationRecords').innerHTML = tableHTML;
 
-                // Clear the data from localStorage after displaying
-                localStorage.removeItem('vaccinationData');
-
             } catch (error) {
                 console.error('Error parsing data:', error);
-                alert('Error parsing immunization data');
+                document.body.innerHTML = `
+                    <div class="container">
+                        <h1 class="title" style="color: #ff4444;">Error Loading Data</h1>
+                        <p style="text-align: center; margin: 20px;">Unable to load immunization record data. Please try again.</p>
+                        <p style="text-align: center; color: #666;">Technical details: ${error.message}</p>
+                    </div>
+                `;
             }
         });
     </script>
